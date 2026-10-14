@@ -46,6 +46,31 @@ def test_webhook_config_accepts_a_secure_https_origin(monkeypatch):
     assert config.telegram_webhook_path == "/telegram/webhook"
 
 
+def test_webhook_config_uses_render_external_url(monkeypatch):
+    _hosted_environment(monkeypatch)
+    monkeypatch.setenv("TELEGRAM_TRANSPORT", "webhook")
+    monkeypatch.delenv("WEBHOOK_PUBLIC_URL", raising=False)
+    monkeypatch.setenv("RENDER_EXTERNAL_URL", "https://rdw-assistant-bot.onrender.com")
+    monkeypatch.setenv("TELEGRAM_WEBHOOK_SECRET", "A_secure_webhook_secret_1234567890")
+
+    config = load_config()
+
+    assert config.webhook_public_url == "https://rdw-assistant-bot.onrender.com"
+
+
+def test_webhook_config_uses_render_external_hostname(monkeypatch):
+    _hosted_environment(monkeypatch)
+    monkeypatch.setenv("TELEGRAM_TRANSPORT", "webhook")
+    monkeypatch.delenv("WEBHOOK_PUBLIC_URL", raising=False)
+    monkeypatch.delenv("RENDER_EXTERNAL_URL", raising=False)
+    monkeypatch.setenv("RENDER_EXTERNAL_HOSTNAME", "rdw-assistant-bot.onrender.com")
+    monkeypatch.setenv("TELEGRAM_WEBHOOK_SECRET", "A_secure_webhook_secret_1234567890")
+
+    config = load_config()
+
+    assert config.webhook_public_url == "https://rdw-assistant-bot.onrender.com"
+
+
 @pytest.mark.parametrize("url,secret", [
     ("http://rdw.example.test", "A_secure_webhook_secret_1234567890"),
     ("https://rdw.example.test/path", "A_secure_webhook_secret_1234567890"),

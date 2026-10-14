@@ -447,7 +447,7 @@ def main():
                     ))
                 except Exception:
                     raise SystemExit(
-                        "Démarrage webhook impossible : vérifiez Neon, Telegram, l'URL HTTPS et les variables Koyeb."
+                        "Démarrage webhook impossible : vérifiez Neon, Telegram, l'URL HTTPS et les variables cloud."
                     ) from None
             return
 

@@ -24,7 +24,7 @@ Les deux prix sont configurables localement avec `CONSULTATION_PRICE_DZD` et `PR
 
 Le bot reste réservé aux identifiants de `TELEGRAM_ALLOWED_USER_IDS` dans `.env`. Le token Telegram et l'URL PostgreSQL sont déjà configurés localement ; **ne les copiez pas dans un message**. Le démarrage vérifie que le token correspond à `@RDW_assistant_bot`. La base dédiée au bot est dans `.runtime/postgres`, sur `127.0.0.1:55432`, avec authentification par mot de passe. Le PostgreSQL préexistant sur le PC n'est pas modifié. `.env` et `.runtime` sont ignorés par Git.
 
-Pour exécuter le bot sans laisser ce PC allumé, utilisez le [guide GitHub, Neon et Koyeb](DEPLOYMENT.md). Le dépôt inclut un `Dockerfile`, un transport webhook sécurisé, l'initialisation non destructive de PostgreSQL, un contrôle `/health`, une authentification du dashboard et des tests GitHub Actions. Les secrets restent dans Neon et Koyeb.
+Pour exécuter le bot sans laisser ce PC allumé, utilisez le [guide GitHub, Neon et Render](DEPLOYMENT.md). Le dépôt inclut un `Dockerfile`, un Blueprint Render, un transport webhook sécurisé, l'initialisation non destructive de PostgreSQL, un contrôle `/health`, une authentification du dashboard et des tests GitHub Actions. Les secrets restent dans Neon et Render.
 
 Depuis PowerShell, dans `C:\Users\bacht\Desktop\W_Autom\telegram-bot` :
 
@@ -44,7 +44,7 @@ Le verrou `.runtime/bot.lock` empêche deux instances de ce programme de traiter
 
 Le mode assistant démarre aussi un dashboard en lecture seule sur [http://127.0.0.1:8765](http://127.0.0.1:8765). Il affiche les fiches dont les coordonnées ont été confirmées et dont le consentement a été enregistré : nom, prénom, téléphone, projet, faits déclarés, questions ouvertes et date de mise à jour. Les filtres séparent études, emploi, Ausbildung et volontariat. La catégorie volontariat reste visible pour d'éventuelles anciennes fiches, même si le corpus actif ne présente pas cette offre.
 
-Le dashboard ne montre pas l'identifiant Telegram et ne recopie pas le texte brut des conversations. Il lit PostgreSQL directement à chaque actualisation. En local, il est lié à `127.0.0.1`. Sur Koyeb, il écoute sur `0.0.0.0` uniquement si `DASHBOARD_USERNAME` et un `DASHBOARD_PASSWORD` d'au moins 16 caractères sont fournis ; Koyeb apporte HTTPS.
+Le dashboard ne montre pas l'identifiant Telegram et ne recopie pas le texte brut des conversations. Il lit PostgreSQL directement à chaque actualisation. En local, il est lié à `127.0.0.1`. Sur Render, il écoute sur `0.0.0.0` uniquement si `DASHBOARD_USERNAME` et un `DASHBOARD_PASSWORD` d'au moins 16 caractères sont fournis ; Render apporte HTTPS.
 
 Configuration locale :
 
@@ -58,7 +58,7 @@ Le dashboard suit le cycle du bot : `start-assistant.ps1` le démarre et `stop-a
 
 ## Ajouter le propriétaire au test privé
 
-Le propriétaire ouvre [@RDW_assistant_bot](https://t.me/RDW_assistant_bot) depuis **son propre compte Telegram**, appuie sur Démarrer et envoie `/id`. Son identifiant `1953680558` est déjà ajouté au `.env` local comme compte autorisé et administrateur. Il pourra utiliser `/start`, poser une question, décrire un projet et ouvrir `/admin` après le prochain redémarrage local ou le déploiement Koyeb.
+Le propriétaire ouvre [@RDW_assistant_bot](https://t.me/RDW_assistant_bot) depuis **son propre compte Telegram**, appuie sur Démarrer et envoie `/id`. Son identifiant `1953680558` est déjà ajouté au `.env` local comme compte autorisé et administrateur. Il pourra utiliser `/start`, poser une question, décrire un projet et ouvrir `/admin` après le prochain redémarrage local ou le déploiement Render.
 
 Pour lui confier la gestion des contenus, mettez aussi son identifiant dans `RDW_ADMIN_USER_IDS`. Pendant une période de passation, cette variable peut contenir les deux identifiants séparés par une virgule. Les commandes `/admin`, `/attente`, `/repondre`, `/faq_ajouter`, `/contenu` et `/video` sont alors disponibles depuis son compte. Lorsqu'un administrateur pose lui-même une question sans réponse pendant un test, elle reste consultable dans `/attente`, mais l'alerte interne n'est plus envoyée dans sa propre conversation.
 
@@ -66,7 +66,7 @@ Pour lui confier la gestion des contenus, mettez aussi son identifiant dans `RDW
 
 Le propriétaire n'a pas besoin de connecter son compte personnel aux comptes des clients. Une fois les essais terminés, il partage simplement [https://t.me/RDW_assistant_bot](https://t.me/RDW_assistant_bot). Chaque client ouvre une conversation privée distincte avec le bot.
 
-Avant ce partage, modifiez la variable Koyeb :
+Avant ce partage, modifiez la variable Render :
 
 ```dotenv
 BOT_MODE=assistant
@@ -75,7 +75,7 @@ TELEGRAM_ALLOWED_USER_IDS=7907520730,1953680558
 RDW_ADMIN_USER_IDS=7907520730,1953680558
 ```
 
-`TELEGRAM_ALLOWED_USER_IDS` continue alors d'identifier les comptes de gestion ; la restriction des conversations est désactivée par `TELEGRAM_ACCESS_MODE=public`. Redéployez le service Koyeb. Pour refermer immédiatement l'accès, remettez `TELEGRAM_ACCESS_MODE=private` puis redéployez. Le PC personnel peut rester éteint une fois la migration et le test cloud terminés.
+`TELEGRAM_ALLOWED_USER_IDS` continue alors d'identifier les comptes de gestion ; la restriction des conversations est désactivée par `TELEGRAM_ACCESS_MODE=public`. Redéployez le service Render. Pour refermer immédiatement l'accès, remettez `TELEGRAM_ACCESS_MODE=private` puis redéployez. Le PC personnel peut rester éteint une fois la migration et le test cloud terminés.
 
 ## Conversation et données
 

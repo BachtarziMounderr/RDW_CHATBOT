@@ -77,8 +77,17 @@ def load_config() -> Config:
     telegram_transport = os.getenv("TELEGRAM_TRANSPORT", "polling").strip().lower()
     if telegram_transport not in {"polling", "webhook"}:
         raise ValueError("TELEGRAM_TRANSPORT doit valoir polling ou webhook.")
+    render_url = os.getenv("RENDER_EXTERNAL_URL", "").strip()
+    render_hostname = os.getenv("RENDER_EXTERNAL_HOSTNAME", "").strip()
     koyeb_domain = os.getenv("KOYEB_PUBLIC_DOMAIN", "").strip()
-    default_webhook_url = f"https://{koyeb_domain}" if koyeb_domain else ""
+    if render_url:
+        default_webhook_url = render_url
+    elif render_hostname:
+        default_webhook_url = f"https://{render_hostname}"
+    elif koyeb_domain:
+        default_webhook_url = f"https://{koyeb_domain}"
+    else:
+        default_webhook_url = ""
     webhook_public_url = os.getenv("WEBHOOK_PUBLIC_URL", default_webhook_url).strip().rstrip("/")
     webhook_path = os.getenv("TELEGRAM_WEBHOOK_PATH", "/telegram/webhook").strip()
     webhook_secret = os.getenv("TELEGRAM_WEBHOOK_SECRET", "").strip()
