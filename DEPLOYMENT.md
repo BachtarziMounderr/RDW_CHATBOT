@@ -9,9 +9,21 @@ Cette architecture utilise :
 
 Le polling reste disponible pour les essais locaux. Sur Koyeb, le webhook permet à Telegram de réveiller le service lorsqu'un message arrive.
 
+## Architecture : aucun déploiement Vercel nécessaire
+
+Vercel n'intervient pas dans ce projet. Le parcours technique est uniquement :
+
+1. **GitHub** conserve le code source.
+2. **Neon** conserve les données PostgreSQL.
+3. **Koyeb** récupère le code depuis GitHub, construit le `Dockerfile` et exécute le bot.
+4. **Telegram** envoie chaque nouveau message au webhook HTTPS de Koyeb.
+5. Le bot exécuté sur Koyeb interroge Neon pour les données et Groq pour la rédaction lorsque le quota le permet.
+
+Koyeb fournit déjà le domaine HTTPS public nécessaire à Telegram et héberge aussi le dashboard. Ajouter Vercel créerait un quatrième service, une seconde configuration de domaine et un déploiement supplémentaire sans fonction nécessaire ici.
+
 ## 1. Créer le dépôt GitHub privé
 
-Sur GitHub, créez un dépôt **Private** vide nommé par exemple `rdw-assistant-bot`. N'ajoutez pas de README, de licence ou de `.gitignore` depuis GitHub.
+Le dépôt privé est déjà créé et publié ici : [BachtarziMounderr/RDW_CHATBOT](https://github.com/BachtarziMounderr/RDW_CHATBOT). Les commandes ci-dessous documentent ce qui a été fait et servent de référence pour une nouvelle installation.
 
 Dans PowerShell :
 
@@ -22,7 +34,7 @@ git add .
 git status
 git commit -m "Deploy RDW assistant on Neon and Koyeb"
 git branch -M main
-git remote add origin https://github.com/VOTRE_COMPTE/rdw-assistant-bot.git
+git remote add origin https://github.com/BachtarziMounderr/RDW_CHATBOT.git
 git push -u origin main
 ```
 
