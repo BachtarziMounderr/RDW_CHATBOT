@@ -50,7 +50,7 @@ try {
     $env:PGDATABASE = $database
     $env:PGSSLMODE = 'require'
 
-    & $pgRestore --no-owner --no-privileges --single-transaction --exit-on-error $resolvedBackup
+    & $pgRestore --dbname=$env:PGDATABASE --no-owner --no-privileges --single-transaction --exit-on-error $resolvedBackup
     if ($LASTEXITCODE -ne 0) {
         throw 'Restauration refusée. La transaction a été annulée ; vérifiez que le schéma telegram est absent de Neon.'
     }

@@ -11,6 +11,7 @@ RUN pip install --no-cache-dir -r requirements.txt -r requirements-ia.txt \
     && useradd --create-home --uid 10001 rdw
 
 COPY --chown=rdw:rdw . .
+RUN mkdir -p /app/.runtime && chown -R rdw:rdw /app
 
 USER rdw
 
