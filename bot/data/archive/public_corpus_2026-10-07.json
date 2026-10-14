@@ -1,0 +1,168 @@
+{
+  "code": "rdw_public_intro",
+  "version": "1.1.0-private-test",
+  "status": "public_editorial_extract_private_test",
+  "source": "Base de connaissances et RAG2.md",
+  "source_sha256": "9c4e82326c2f1708b462d0462421ab99431b30258d7e83566fd68faa8cd4c230",
+  "editorial_note": "Extrait prospect dérivé des sections 1, 3, 4, 5 et 10. Les exemples personnels, contacts de recruteurs et détails techniques internes sont exclus. Les modalités de lettres contradictoires demandent un arbitrage de RDW. Réponses de test à valider par l’agence avant diffusion publique.",
+  "passages": [
+    {
+      "id": "mission",
+      "section": "introduction",
+      "title": "Accompagnement RDW",
+      "text": "RDW accompagne les personnes intéressées par un projet en Allemagne dans quatre voies : études, Ausbildung, emploi et volontariat. L'accompagnement peut porter sur la compréhension du parcours, la préparation d'un dossier et la recherche de cibles adaptées. Chaque situation doit être examinée individuellement par l'équipe.",
+      "sha256": "fc2b6b4fe8c4e7a2e21a20cad4cdfedf1c3de6843cfe7c9f7707a0c07c8e77de",
+      "test_answer": "RDW accompagne des projets vers l’Allemagne, notamment la préparation de candidatures adaptées au profil. Chaque situation est examinée individuellement.",
+      "test_questions": [
+        "Qui est RDW ?",
+        "Que fait votre agence ?",
+        "Présentez RDW",
+        "En quoi RDW peut m’aider ?"
+      ],
+      "answer_sha256": "9b2eb95d61a23828f759f4edf02620b6ea93d0b94d4f6243efbf91658850a8f6"
+    },
+    {
+      "id": "etudes",
+      "section": "1",
+      "title": "Études",
+      "text": "La voie études concerne un projet d'inscription dans un établissement d'enseignement supérieur en Allemagne. Selon le parcours, une étape préparatoire peut être envisagée. L'équipe RDW peut aider à organiser le dossier et à identifier les établissements pertinents. Les conditions actuelles d'admission doivent être vérifiées auprès des établissements et des autorités compétentes.",
+      "sha256": "fe1d565bf53c11d1f1fb7aba4b74743c9a249871f183e78b0f7e94bb3a4f755a",
+      "test_answer": "RDW accompagne les projets d’études en Allemagne en aidant à organiser le dossier et à repérer les établissements pertinents. Les conditions d’admission sont à vérifier auprès de chaque établissement.",
+      "test_questions": [
+        "Je veux étudier en Allemagne",
+        "Vous aidez pour l’université ?",
+        "Parlez-moi des études"
+      ],
+      "answer_sha256": "f6c519258171a5f3481a9e6e32cee773668b96cf260aa94dd3c634dcc32b7094"
+    },
+    {
+      "id": "ausbildung",
+      "section": "1",
+      "title": "Ausbildung",
+      "text": "L'Ausbildung est une formation professionnelle allemande avec une part de pratique en entreprise. Les secteurs et les organismes formateurs varient selon le projet. RDW peut aider à présenter le profil, préparer la candidature et cibler des offres adaptées. Les exigences de chaque programme doivent être vérifiées à leur source.",
+      "sha256": "62469e60bd8ed7a31fd25b009bd4c2c8c53e3dcdf27d35e9b8649278d6f1a783",
+      "test_answer": "L’Ausbildung est une formation professionnelle avec une part pratique en entreprise. RDW peut aider à préparer et cibler une candidature ; les exigences varient selon le programme.",
+      "test_questions": [
+        "C’est quoi une Ausbildung ?",
+        "Vous aidez pour l’apprentissage ?",
+        "Formation en alternance en Allemagne"
+      ],
+      "answer_sha256": "e6c224b5c8f8c83f9480e36231f3efa4cbf4a06b038b01964c099e68531b96fd"
+    },
+    {
+      "id": "emploi",
+      "section": "1",
+      "title": "Emploi",
+      "text": "La voie emploi vise des candidatures auprès d'employeurs en Allemagne, selon le métier, l'expérience et les compétences du candidat. RDW peut accompagner la préparation du CV et de candidatures ciblées. Une offre, une embauche ou un titre de séjour ne peuvent pas être garantis.",
+      "sha256": "c404b9298732023576757e6010d7407705e583f45fef5e1de048ef10e5862790",
+      "test_answer": "Pour un projet d’emploi, RDW peut aider à préparer un CV et des candidatures ciblées selon le métier et l’expérience. Une embauche n’est pas garantie.",
+      "test_questions": [
+        "Vous aidez à trouver un travail ?",
+        "Je cherche un emploi en Allemagne",
+        "Accompagnement pour un job"
+      ],
+      "answer_sha256": "28ef651ad6c3b347fd2147effb04d31a5ef9824d47e81434771d11560f27f861"
+    },
+    {
+      "id": "volontariat",
+      "section": "1",
+      "title": "Volontariat",
+      "text": "Le volontariat comprend notamment les programmes FSJ, BFD et ESC. Les missions et les critères dépendent de l'organisme et du programme. RDW peut aider à clarifier le projet et à préparer des candidatures adaptées. La disponibilité d'une place et les conditions d'accès doivent être confirmées auprès des organismes officiels.",
+      "sha256": "40fa87d3b8a4b1a51b0772d95f728b0530ca8cdeeb18882ba1a05750a3a3cb2d",
+      "test_answer": "RDW peut accompagner un projet de volontariat, notamment FSJ, BFD ou ESC, et aider à préparer une candidature adaptée. Les critères dépendent du programme et de l’organisme.",
+      "test_questions": [
+        "Je veux faire du volontariat",
+        "Vous accompagnez pour le FSJ ?",
+        "C’est quoi BFD et ESC ?"
+      ],
+      "answer_sha256": "b346b4857bdca08d2a144695bf3fca7cc4dd20e7c9b9d822f1da2ecfb7d40ead"
+    },
+    {
+      "id": "documents",
+      "section": "3",
+      "title": "CV et documents",
+      "text": "Un dossier de candidature peut comprendre un CV, une lettre de motivation et des justificatifs de formation, de langue ou d'expérience pertinents. Les pièces exactes dépendent de la voie et de l'organisme. Ne transmettez pas de passeport, de document sensible ou de numéro de matricule dans ce bot ; un conseiller indiquera un canal approprié si nécessaire.",
+      "sha256": "9608551a41da6257b945839db3ca15399a34ef0676a4fff98d7174c47187f980",
+      "test_answer": "Un dossier peut comprendre un CV, une lettre de motivation et des justificatifs utiles de formation, de langue ou d’expérience. La liste exacte dépend du programme ; ne transmettez pas de document sensible dans ce bot.",
+      "test_questions": [
+        "Quels documents faut-il préparer ?",
+        "Que mettre dans le dossier ?",
+        "Faut-il des certificats ?"
+      ],
+      "answer_sha256": "841b9bbef4f31fce7fa1945f8bfa283fcf09595572122b184ccbf48811fd8af3"
+    },
+    {
+      "id": "lettres",
+      "section": "3-5",
+      "title": "Candidature ciblée",
+      "text": "Une candidature gagne à être adaptée à la mission et à l'organisme visés, avec des faits vérifiables et une motivation personnelle. Le document source présente deux approches différentes pour la granularité des lettres, par organisme ou par famille d'organismes. L'agence doit arbitrer cette méthode au cas par cas ; le bot ne prescrit pas un nombre de lettres.",
+      "sha256": "411fb0b068be555cd8f6957b7efc18457454d696a1afc0b0b1882ad2b11dbd96",
+      "test_answer": "La lettre de motivation doit être adaptée à la mission visée et s’appuyer sur des faits vérifiables. Le document source diverge sur une lettre par organisme ou par famille : RDW doit préciser cette méthode.",
+      "test_questions": [
+        "Comment préparer une lettre de motivation ?",
+        "Une lettre par organisme ou par famille ?",
+        "Comment personnaliser ma candidature ?"
+      ],
+      "answer_sha256": "303ddf1707463221d69d88ad4fde0747ee581005737fd75b5aeedd19ff7472b3"
+    },
+    {
+      "id": "limites",
+      "section": "note éditoriale",
+      "title": "Informations à confirmer",
+      "text": "Les prix, coordonnées de l'agence, remboursements, délais, critères de visa et règles juridiques à jour ne figurent pas dans ce corpus public. Le bot ne peut donc pas les confirmer. Pour une réponse précise, demandez à parler à un conseiller RDW.",
+      "sha256": "bc0d40b349bc3fc60566060dd631556f934221f838cb951e06bc3ff95b153830",
+      "test_answer": "Cette information n’est pas indiquée dans la base publique RDW. Je ne peux pas confirmer un tarif, un contact, un remboursement, un délai, ni une condition d’admission ou de visa.",
+      "test_questions": [
+        "Combien coûte le service ?",
+        "Quel est le tarif ?",
+        "Visa garanti ?",
+        "Quel délai ?",
+        "Quelle adresse ?"
+      ],
+      "answer_sha256": "a24ccd04f870f3845569fdb56dec81b8d6d266a16e574d1f578e92a1380d51a3"
+    },
+    {
+      "id": "filieres",
+      "section": "1",
+      "title": "Filières accompagnées",
+      "text": "RDW présente quatre grandes voies de projet en Allemagne : études, Ausbildung (formation professionnelle), emploi et volontariat, dont FSJ, BFD et ESC. La voie pertinente dépend du profil et du projet de la personne.",
+      "test_answer": "RDW présente quatre voies : études, Ausbildung, emploi et volontariat (notamment FSJ, BFD et ESC). Le choix dépend de votre projet.",
+      "test_questions": [
+        "Quelles filières accompagnez-vous ?",
+        "Quels parcours sont possibles ?",
+        "Quelles sont les voies proposées ?"
+      ],
+      "sha256": "758c1ebb49f6bed6b66ae41417e5560becbfcf0446ef6116e46743dabbdd97fc",
+      "answer_sha256": "6249507422ffd85efd7525acbf8879c274c1dd90926ef9d19fde9bebd0a1d642"
+    },
+    {
+      "id": "processus",
+      "section": "1, 3, 10",
+      "title": "Fonctionnement de l’accompagnement",
+      "text": "L’accompagnement décrit dans la source commence par comprendre le projet et le profil, puis préparer un dossier de candidature et identifier des organismes ou établissements pertinents. Les étapes concrètes dépendent de la voie et de la situation individuelle.",
+      "test_answer": "RDW commence par examiner votre projet, puis peut aider à préparer le dossier et à cibler des établissements ou organismes adaptés. Les étapes précises dépendent de votre situation.",
+      "test_questions": [
+        "Comment se passe l’accompagnement ?",
+        "Comment ça marche avec RDW ?",
+        "Quelles sont les étapes ?",
+        "Que fait-on après le premier échange ?"
+      ],
+      "sha256": "dd8a3035353e2b6a89593164a7e938d6ff2d5730f5136450c2911c49bd6cbbe9",
+      "answer_sha256": "a0368a026a57f4310e25f085abef2d1ac8f32bd3cd8f0f31017890560aa71625"
+    },
+    {
+      "id": "cv",
+      "section": "3",
+      "title": "CV allemand",
+      "text": "La source décrit un CV allemand qui présente clairement la formation, les expériences, les compétences et les langues du candidat, avec des faits exacts et pertinents pour le projet. La mise en forme et les pièces à joindre dépendent de la candidature visée.",
+      "test_answer": "Un CV présente clairement votre formation, vos expériences, vos compétences et vos langues, avec des informations exactes et pertinentes pour la candidature visée.",
+      "test_questions": [
+        "Comment préparer mon CV ?",
+        "Que doit contenir le Lebenslauf ?",
+        "Vous aidez pour le curriculum vitae ?"
+      ],
+      "sha256": "23c1efbf1b0e6b1f052f12c599a4daabf4de33deaadc8e1f19e5882e892d4b99",
+      "answer_sha256": "f8543a056df910c0238588a9b54c031a324c50fd3d6843018cf261922e4c6ab6"
+    }
+  ]
+}

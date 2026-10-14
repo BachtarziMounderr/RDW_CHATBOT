@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.tmp/
+.test-*/
+pytest-cache-files-*/
+test-run-*/
+exports/
+backups/
+.runtime/
+*.log
+.DS_Store

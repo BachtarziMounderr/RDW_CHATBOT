@@ -1,0 +1,299 @@
+{
+  "code": "rdw_guide_2026",
+  "version": "2026-10-08-curation-1",
+  "status": "extrait_public_du_pdf_a_valider_par_rdw",
+  "source": "Ta-route-vers-l-Allemagne-RDW.pdf",
+  "source_title": "Guide RDW « Ta route vers l'Allemagne »",
+  "source_edition": "2026",
+  "source_sha256": "41027c07e551e2c95125f6289cc925238bc64eac54a541df21395609c381273f",
+  "editorial_note": "Passages publics issus exclusivement du PDF de 43 pages. Les exemples personnels, les noms individuels, les contacts de recruteurs, les détails internes et les assertions juridiques ou chiffrées contradictoires sont exclus des réponses affirmatives. Le propriétaire de RDW doit valider ce corpus avant une diffusion ouverte.",
+  "passages": [
+    {
+      "id": "mission",
+      "section": "Introduction et FAQ RDW",
+      "pages": [
+        7,
+        37
+      ],
+      "title": "RDW et Virtulingo",
+      "text": "Le guide présente Virtulingo comme une école d'allemand en ligne en Algérie et RDW comme son service d'accompagnement vers l'Allemagne. RDW propose une analyse du profil et un accompagnement des démarches selon le projet de la personne.",
+      "test_answer": "RDW accompagne des projets vers l'Allemagne en lien avec Virtulingo, école d'allemand en ligne. L'équipe examine le profil et les démarches adaptées au projet.",
+      "test_questions": [
+        "Qui est RDW ?",
+        "Que fait votre agence ?",
+        "Quel est le lien entre RDW et Virtulingo ?"
+      ],
+      "sha256": "0701b6a267b77936443b9e20fe3c9a09a062cbbda712ba7be942ae3a0c93b58d",
+      "answer_sha256": "6f06f02ce4fa8fdfc9ecc9b2e1a8133029cb2f42a1d5c02e20219cceec8b14a1"
+    },
+    {
+      "id": "filieres",
+      "section": "Chapitres 3 et 6, FAQ",
+      "pages": [
+        16,
+        17,
+        20,
+        28,
+        36
+      ],
+      "title": "Parcours décrits",
+      "text": "Le guide décrit l'accompagnement pour les études supérieures, l'Ausbildung et les projets d'emploi en Allemagne. Il ne présente pas de prestation RDW pour le volontariat.",
+      "test_answer": "Le guide décrit trois voies accompagnées par RDW : études supérieures, Ausbildung et emploi. Il ne décrit pas d'offre de volontariat.",
+      "test_questions": [
+        "Quelles filières accompagnez-vous ?",
+        "Vous aidez pour les études, l'Ausbildung et le travail ?"
+      ],
+      "sha256": "bac545d9c0a302415c73d0ac27a6c5ad7509fd11b2c3e7cb876841a869fd2e8a",
+      "answer_sha256": "a5f7d4b676037089f4b1162d0d3d41477a09b11fabaf773d49f84c2d78a87f13"
+    },
+    {
+      "id": "etudes",
+      "section": "3.1 Visa étudiant et FAQ RDW",
+      "pages": [
+        16,
+        17,
+        37
+      ],
+      "title": "Projet d'études",
+      "text": "Pour un projet d'études supérieures, le guide indique que RDW analyse le profil, prépare le dossier et cible les établissements selon la situation. L'admission et les exigences de langue ou de financement dépendent de l'établissement et des autorités compétentes ; le guide ne permet pas de les garantir pour une personne.",
+      "test_answer": "Pour les études, RDW peut aider à analyser votre profil, préparer le dossier et cibler des établissements. L'admission et les exigences restent à vérifier pour votre situation.",
+      "test_questions": [
+        "Je veux faire un master en Allemagne",
+        "RDW aide pour l'université ?"
+      ],
+      "sha256": "f121c63f4167b37195e71d514b1b9362b8a402373249a5794c10f11d961f6501",
+      "answer_sha256": "97012f7a557ec9f5f57d5f041f01a61f01c1c82aac82fd8a796b64051016f659"
+    },
+    {
+      "id": "ausbildung",
+      "section": "3.2 Ausbildung",
+      "pages": [
+        17,
+        20
+      ],
+      "title": "Projet d'Ausbildung",
+      "text": "Le guide présente l'Ausbildung comme une formation professionnelle alternant travail en entreprise et enseignement. Pour cette voie, RDW décrit l'analyse du profil, la préparation du CV et de la lettre, la recherche d'employeurs, la gestion des candidatures et la simulation d'entretien. Un contrat ou un visa n'est pas garanti par ces étapes.",
+      "test_answer": "Pour l'Ausbildung, RDW décrit une aide à l'analyse du profil, au CV, aux candidatures et à la préparation des entretiens. La suite dépend des employeurs et des autorités.",
+      "test_questions": [
+        "Je veux une Ausbildung",
+        "Aidez-vous à trouver une formation en alternance ?"
+      ],
+      "sha256": "089d309a604e1f07a45991560082a10fa245b8732744e553e5b6e96532028c61",
+      "answer_sha256": "01a0b9c897cf529c3bf689f73c20526a1c7155f8aae57dd3cedfa8649fea6b05"
+    },
+    {
+      "id": "emploi",
+      "section": "Chapitre 6 et FAQ",
+      "pages": [
+        27,
+        28,
+        36
+      ],
+      "title": "Projet d'emploi",
+      "text": "Pour la recherche d'emploi, le guide décrit le ciblage d'employeurs, la préparation de candidatures, les contacts et suivis ainsi que la préparation d'entretien. RDW examine le diplôme, l'expérience, la langue et la cohérence du projet. Une embauche ou un visa ne peut pas être promis à partir du guide.",
+      "test_answer": "Pour un projet d'emploi, RDW peut examiner votre profil, préparer des candidatures ciblées et vous aider à préparer les entretiens. Une embauche n'est pas garantie.",
+      "test_questions": [
+        "Je cherche un emploi en Allemagne",
+        "Comment RDW aide pour travailler ?"
+      ],
+      "sha256": "971a188a99841341657b3f200b77d93f8e3ae273d23792d3c914b2593770da74",
+      "answer_sha256": "6d03a69d2d757bc552c206dd93f985b5b1f7c0b0f245c5176d7a66d7b8bb1eb1"
+    },
+    {
+      "id": "processus",
+      "section": "Vue d'ensemble, chapitres 3 à 9 et FAQ",
+      "pages": [
+        5,
+        20,
+        26,
+        28,
+        29,
+        32,
+        37
+      ],
+      "title": "Étapes de l'accompagnement",
+      "text": "Le guide décrit une consultation et un bilan du profil, puis selon le service choisi la préparation linguistique avec Virtulingo, celle des documents et candidatures, la recherche de cibles, les simulations d'entretien et un accompagnement des démarches ou de l'arrivée. Les prestations exactes sont précisées dans le devis individuel. Les durées de la feuille de route ne sont pas des délais garantis.",
+      "test_answer": "RDW commence par examiner le profil et le projet. Selon la prestation choisie, l'équipe peut aider pour les documents, les candidatures, les entretiens et certaines démarches. Le détail est à confirmer dans le devis.",
+      "test_questions": [
+        "Comment se passe l'accompagnement ?",
+        "Quelles sont les étapes avec RDW ?"
+      ],
+      "sha256": "5bdb5d3e9af590b2b10804afc332fecef9d36e8b33202c97a8759ec80bbe57c6",
+      "answer_sha256": "5ddfc38a2f09d8a45385a4a8372f0677c27620da81e1e3261cef649501a3ffdd"
+    },
+    {
+      "id": "langue",
+      "section": "Introduction, chapitre 4 et FAQ",
+      "pages": [
+        7,
+        24,
+        38
+      ],
+      "title": "Formation en allemand",
+      "text": "Le guide présente Virtulingo comme une école d'allemand en ligne. Il décrit des cours en direct pour progresser de A1 à B2 et une préparation au test. Le niveau demandé dépend du parcours et de l'organisme concerné ; le bot ne peut pas déclarer un niveau universel obligatoire.",
+      "test_answer": "Virtulingo propose des cours d'allemand en ligne, de A1 à B2 selon le guide. Le niveau nécessaire dépend de votre projet et doit être vérifié pour la candidature visée.",
+      "test_questions": [
+        "Proposez-vous des cours d'allemand ?",
+        "Quel niveau de langue faut-il ?"
+      ],
+      "sha256": "db8618d1e47d615a49795e4dcc62a7dd7ffc4c2df5acafb7ca3a3a9653ab5504",
+      "answer_sha256": "923623fd5d9799adeebc6267e2cac24c72ebb72cf2587c8fc53813bd229fc001"
+    },
+    {
+      "id": "cv",
+      "section": "5.1 CV allemand",
+      "pages": [
+        25
+      ],
+      "title": "CV",
+      "text": "Le guide recommande de présenter le parcours, les diplômes avec établissement et année, le niveau de langue certifié et les expériences vérifiables dans un CV lisible. Il déconseille les expériences inventées et les renseignements sans rapport avec la candidature.",
+      "test_answer": "Pour le CV, présentez clairement votre formation, vos expériences vérifiables et vos langues. Évitez toute information inventée ; RDW peut aider à adapter le CV à la candidature.",
+      "test_questions": [
+        "Que mettre dans mon CV ?",
+        "Aidez-vous pour le Lebenslauf ?"
+      ],
+      "sha256": "1623d9b95f188844090dd6e447cb067621fd5b17454c1adffd7f986ee32e9e9f",
+      "answer_sha256": "79de8aa42e035c78fa776e9226e0974fb5df9117647caed28ae12ecd53c6ddd9"
+    },
+    {
+      "id": "lettres",
+      "section": "5.2 Lettre de motivation",
+      "pages": [
+        25
+      ],
+      "title": "Lettre de motivation",
+      "text": "Le guide recommande une lettre ciblée sur le poste et l'entreprise, qui relie les compétences concrètes du candidat à la candidature et indique sa disponibilité. Il présente un format bref, d'une page au plus, rédigé en allemand pour les candidatures concernées.",
+      "test_answer": "La lettre de motivation doit expliquer le poste visé, le lien avec vos compétences et votre disponibilité. Le guide recommande de l'adapter à chaque candidature.",
+      "test_questions": [
+        "Comment faire ma lettre de motivation ?",
+        "Une lettre générique suffit-elle ?"
+      ],
+      "sha256": "05207d3341dae6a9ce989694d39d6a1eae3d89a18a83d7e9e6a5b2dc6dfbca80",
+      "answer_sha256": "839bac084be7eb1ec618577d0d5c82ac7fd68630037054bf31b87eeacfb4c50a"
+    },
+    {
+      "id": "documents",
+      "section": "5.3 Traduction et vérification des diplômes",
+      "pages": [
+        25,
+        26
+      ],
+      "title": "Documents du dossier",
+      "text": "Le guide décrit la préparation de justificatifs de formation et de langue, ainsi que la traduction, l'authentification et la vérification des diplômes lorsque le parcours l'exige. RDW indique pouvoir accompagner cette préparation. La liste exacte des pièces dépend du programme et de l'autorité ; aucun document personnel ne doit être envoyé au bot.",
+      "test_answer": "Nous pouvons accompagner la préparation du dossier : justificatifs de formation et de langue, traduction, authentification et vérification des diplômes lorsque le parcours l'exige. La liste exacte des pièces dépend du programme et de l'autorité ; n'envoyez aucun document personnel dans ce bot.",
+      "test_questions": [
+        "Quels documents faut-il pour le dossier ?",
+        "RDW aide-t-il avec la traduction des diplômes ?"
+      ],
+      "sha256": "9587dfb69d83ab41658259e2df2d4b1838a126b40d777471b42bd83cd83cab9b",
+      "answer_sha256": "af34d9adbcb406d4ddc2fbacc4c9c3482a5b54e6fb72215d5942844bb6da33f3"
+    },
+    {
+      "id": "consultation",
+      "section": "FAQ 04 et conclusion",
+      "pages": [
+        37,
+        42
+      ],
+      "title": "Consultation RDW",
+      "text": "Le guide décrit une consultation en appel vidéo ou classique, d'environ trente minutes, pour examiner le diplôme, l'expérience, la langue et la situation du projet. RDW présente ensuite les étapes envisagées et un devis adapté aux services souhaités. L'horaire et la disponibilité d'un conseiller ne sont pas connus du bot.",
+      "test_answer": "Le guide décrit une consultation par appel vidéo ou classique pour examiner le projet, puis un devis selon les services souhaités. Je ne peux pas confirmer un créneau ni un délai de rappel.",
+      "test_questions": [
+        "Comment se passe la consultation ?",
+        "Puis-je parler à un conseiller ?"
+      ],
+      "sha256": "22d68207167a6f42413c9c4b56ce24c3a7e8dfaa0d363bffd6c3f0813f101190",
+      "answer_sha256": "4dccfcc5ef8816a9ce5a5df4ef6be504ea0b45acd255d1f3fd2a91f19c9ad2c6"
+    },
+    {
+      "id": "tarifs",
+      "section": "4.4 Tarifs et FAQ 04",
+      "pages": [
+        24,
+        37,
+        42
+      ],
+      "title": "Tarifs indiqués dans le guide 2026",
+      "text": "Le guide édition 2026 affiche 2 000 DA pour la consultation, déduits du prix final si une prestation RDW est choisie. Il affiche 105 000 DA pour la formation Virtulingo complète au tarif individuel et 89 000 DA pour le pack communauté destiné aux lecteurs du guide. Les autres services RDW dépendent d'un devis ; les tarifs actuels et conditions doivent être confirmés auprès de l'équipe.",
+      "test_answer": "Le guide 2026 indique 2 000 DA pour la consultation, déduits d'une prestation RDW choisie, puis un devis selon les services. Les tarifs et conditions actuels sont à confirmer avec RDW.",
+      "test_questions": [
+        "Combien coûte la consultation ?",
+        "Quels sont vos tarifs ?"
+      ],
+      "sha256": "d975ba61e23847d7dd6d06ac037cf7d53cc3ffc04bb81ca66139f47363e88620",
+      "answer_sha256": "52b4fba90612024dae3adc3f62dcd2b3d6dbe1310627a8d362d7682ea1d0cf56"
+    },
+    {
+      "id": "tarifs_langue",
+      "section": "4.4 Formation Virtulingo et conclusion",
+      "pages": [
+        24,
+        42
+      ],
+      "title": "Prix de la formation en allemand dans le guide 2026",
+      "text": "Le guide édition 2026 affiche 105 000 DA pour la formation Virtulingo complète de A1 à B2 avec préparation au test au tarif individuel. Il affiche 89 000 DA pour le pack communauté réservé aux lecteurs du guide. Les prix et conditions actuels sont à confirmer auprès de Virtulingo ou de RDW.",
+      "test_answer": "Le guide 2026 affiche 105 000 DA au tarif individuel et 89 000 DA pour le pack communauté Virtulingo réservé aux lecteurs du guide. Ces prix et conditions sont à confirmer avant toute inscription.",
+      "test_questions": [
+        "Combien coûte la formation d'allemand ?",
+        "Quel est le prix du pack Virtulingo ?"
+      ],
+      "sha256": "a18656f66e21ae66635fb81dbc81f70a28bec904a0869b6aeef65119efc73dc2",
+      "answer_sha256": "e0c2e094f90f3624677be46c06cfe7d20095af2f947be56ec5f95ad3049d655a"
+    },
+    {
+      "id": "garanties",
+      "section": "Vue d'ensemble, FAQ et conclusion",
+      "pages": [
+        5,
+        36,
+        41,
+        42
+      ],
+      "title": "Garanties évoquées dans le guide",
+      "text": "Le guide évoque une garantie d'entretiens et une formule satisfait ou remboursé, mais en donne plusieurs formulations : délai après le B2, nombre minimal d'entretiens ou résultats promis dans un délai raisonnable. Les conditions précises ne sont pas suffisamment cohérentes pour être annoncées par le bot ; seul un contrat RDW validé peut les définir.",
+      "test_answer": "Le guide évoque des garanties, mais leurs formulations diffèrent selon les pages. Je ne peux pas en confirmer les conditions ; demandez le contrat et le devis RDW.",
+      "test_questions": [
+        "Les entretiens sont-ils garantis ?",
+        "Suis-je remboursé si ça ne marche pas ?"
+      ],
+      "sha256": "4e23ba47ea053245ae66ab43cdf04be48d1bb16bfd15d8bf54fad8c837e2f6eb",
+      "answer_sha256": "01c45e3776ada9ba0916098ab83ff2cdf9f977570d239b13af6ecf0082933b1c"
+    },
+    {
+      "id": "installation",
+      "section": "9.1 Arrivée et conclusion",
+      "pages": [
+        32,
+        42
+      ],
+      "title": "Accompagnement à l'arrivée",
+      "text": "Le guide décrit, pour certaines prestations, une orientation à l'arrivée en Allemagne, une liste de démarches administratives et une aide à l'organisation de l'installation. Le contenu exact de ce suivi dépend de l'offre souscrite et doit être confirmé dans le devis.",
+      "test_answer": "Le guide mentionne un suivi à l'arrivée pour certaines offres RDW. Les démarches prises en charge dépendent de la prestation et sont à confirmer dans le devis.",
+      "test_questions": [
+        "Aidez-vous après l'arrivée ?",
+        "RDW aide pour l'installation ?"
+      ],
+      "sha256": "524b6eb2cd9d653e69233ed5db217670c8d019d503dacc204a0906f375edfdbf",
+      "answer_sha256": "3f1b58a6a25b0fc31747f21107206d16e943b63873d8abcbc73e53b8b238e2df"
+    },
+    {
+      "id": "limites",
+      "section": "Chapitres 1 et 3, FAQ 08",
+      "pages": [
+        10,
+        15,
+        38
+      ],
+      "title": "Informations de visa et de financement à confirmer",
+      "text": "Le guide donne des montants différents pour la preuve de financement et présente des conditions et délais de visa généraux. Ces chiffres ne permettent pas de déterminer les conditions actuelles applicables à un dossier individuel. Les établissements et autorités compétentes doivent être consultés pour l'admission, le visa, la reconnaissance ou le financement.",
+      "test_answer": "Le guide donne des chiffres divergents sur le financement et ne suffit pas à confirmer une condition de visa ou d'admission. Vérifiez ces points auprès de l'établissement ou de l'autorité compétente.",
+      "test_questions": [
+        "Quel compte bloqué faut-il ?",
+        "Mon visa est-il garanti ?",
+        "Puis-je être admis ?"
+      ],
+      "sha256": "6ba976724dd5adfe0a9a10edfd10bf772c16948e850c93c6fd13f26e84ebf2c1",
+      "answer_sha256": "fca0b909e07a3283446761be51e07764627ca524ddb27e55180d5db3ec9ed840"
+    }
+  ]
+}

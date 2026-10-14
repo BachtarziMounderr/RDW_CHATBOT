@@ -1,0 +1,4 @@
+python-telegram-bot==22.8
+psycopg[binary]==3.2.10
+python-dotenv==1.1.1
+pytest==8.4.1
