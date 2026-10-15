@@ -28,6 +28,18 @@ THANKS = re.compile(r"^(merci|merci beaucoup|super merci|parfait merci)[! .]*$",
 FRUSTRATION = re.compile(
     r"\b(?:tu|vous)\s+ne\s+r[eé]ponds?\s+pas|\b(?:ca|cela)\s+ne\s+r[eé]pond\s+pas|"
     r"\bje\s+n['’ ]?ai\s+pas\s+(?:eu|recu|reçu)\s+(?:de\s+)?r[eé]ponse\b", re.I)
+QUESTION_PERMISSION = re.compile(
+    r"\b(?:j['’ ]?ai|jai|j'aurais|jaurais)\s+(?:des?|quelques?)\s+questions?\b|"
+    r"\b(?:je\s+peux|puis.je|est.ce\s+que\s+je\s+peux|possible\s+de|je\s+voudrais|je\s+veux)\b"
+    r".{0,35}\b(?:poser|demander|faire)\b.{0,15}\b(?:questions?|demande)\b|"
+    r"\b(?:n9der|nqder|nakder|ne9der)\b.{0,20}\b(?:nse9si|nsaqsi|nsaksi|nesqsi)\b|"
+    r"\b(?:3andi|andi)\b.{0,12}\b(?:soual|so2al|as2ila)\b",
+    re.I,
+)
+QUESTION_PERMISSION_AR = re.compile(
+    r"(?:عندي\s+(?:سؤال|اسئلة|أسئلة)|هل\s+يمكنني\s+(?:أن\s+)?(?:أسأل|اسأل)|"
+    r"(?:نقدر|اقدر|أقدر)\s+(?:نسقسي|نسأل|نسال))"
+)
 PERSONAL_PROJECT = re.compile(r"\b(?:je veux|je souhaite|j'aimerais|je voudrais|mon projet|je cherche|j'envisage|je pense a|je suis interesse|j'ai un|j'ai une)\b")
 READY_ACTION = re.compile(
     r"\b(?:je suis pret|je suis prete|pret a payer|prete a payer|je veux (?:prendre|commencer)|"
@@ -53,6 +65,10 @@ FOLLOW_UP_PIVOT = re.compile(
     r"ausbildung|emploi|etudes?|consultations?|traduction|lettre|installation)\b", re.I)
 TRACK_LABELS = {"etudes": "études", "ausbildung": "Ausbildung", "emploi": "emploi", "volontariat": "volontariat"}
 SUPPORTED_TRACKS = {"etudes", "ausbildung", "emploi"}
+
+
+def is_question_permission(text: str) -> bool:
+    return bool(QUESTION_PERMISSION.search(normalize(text)) or QUESTION_PERMISSION_AR.search(text))
 
 PROMPTS = {
     "etudes": [
@@ -371,10 +387,12 @@ class ConversationService:
                 reply = Reply(reply.text + "\n\nPour explorer les questions fréquentes, utilisez /faq.", reply.buttons)
         buttons_without_question = bool(reply and reply.buttons and not self._looks_like_question(value))
         if (not self.composer or not reply or callback or value.strip().startswith("/") or buttons_without_question
+                or is_question_permission(value)
                 or THANKS.match(value.strip()) or FRUSTRATION.search(value)):
             return self._with_source_label(reply, "RAG")
         private_stages = {"last_name", "first_name", "contact_detail", "contact_confirm", "consent"}
-        if not session or previous_stage in private_stages or session.stage in private_stages:
+        if (not session or ((previous_stage in private_stages or session.stage in private_stages)
+                            and not self._looks_like_question(value))):
             return self._with_source_label(reply, "RAG")
         if (session.last_source and session.last_source.startswith("RDW:réponse-validée:")
                 and self.review_store and (approved := self.review_store.find_answer(value))
@@ -646,6 +664,12 @@ class ConversationService:
         contact_number_expected = s.stage == "contact_detail"
         if SENSITIVE_INPUT.search(text) or (not contact_number_expected and re.search(r"\b\d{9,}\b", text)):
             return Reply("Ne transmettez pas de passeport, de matricule ni de document sensible dans cette conversation.")
+        if is_question_permission(text):
+            return Reply(self._t(
+                s,
+                "Oui, bien sûr. Vous pouvez me poser toutes vos questions concernant l'Ebook, notre agence ou vos démarches vers l'Allemagne. Je vous répondrai d'abord, puis nous reprendrons le parcours là où vous l'avez laissé.",
+                "نعم، بالطبع. يمكنكم طرح كل أسئلتكم حول الدليل أو وكالتنا أو إجراءاتكم نحو ألمانيا. سأجيب أولا، ثم نعود إلى المرحلة التي توقفنا عندها.",
+            ))
         if GREETING.match(text):
             if s.stage == "language_choice":
                 return Reply(self._language_welcome(), [("🇫🇷 Français", "lang:fr"), ("🇩🇿 العربية", "lang:ar")])

@@ -2,7 +2,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 import json
 
-from bot.conversation import ConversationService
+from bot.conversation import ConversationService, Session
 from bot.lead_store import MemoryLeadStore
 from bot.knowledge_store import MemoryKnowledgeStore
 from bot.gemini_dialogue import GeminiLimits, UsageLimit
@@ -126,3 +126,70 @@ def test_groq_receives_selected_arabic_language_and_returns_grounded_arabic(tmp_
     assert transport.payload["output_language"] == "ar"
     assert answer.text.startswith("يمكن لوكالتنا")
     assert "مرافقتنا المميزة" in answer.text
+
+
+def _reach_last_name(dialog: Dialog):
+    dialog.send("/start")
+    dialog.send("lang:fr", callback=True)
+    dialog.send("ebook:continue", callback=True)
+    dialog.send("funnel:self", callback=True)
+    dialog.send("vip:join", callback=True)
+    return dialog.send("vip:consultant", callback=True)
+
+
+def test_conversation_permission_is_answered_naturally_without_losing_the_stage():
+    knowledge = MemoryKnowledgeStore()
+    d = Dialog(review_store=knowledge)
+    assert "nom de famille" in _reach_last_name(d).text
+
+    permission = d.send("jai des question je peux les poser ?")
+    assert "Oui, bien sûr" in permission.text
+    assert "l'Ebook, notre agence ou vos démarches" in permission.text
+    assert "nom de famille" not in permission.text
+    assert d.bot.sessions[42].stage == "last_name"
+    assert knowledge.questions == []
+
+    documentary = d.send("Est-ce que vous traduisez les documents ?")
+    assert "traduction" in documentary.text
+    assert "nom de famille" in documentary.text
+    assert d.bot.sessions[42].stage == "last_name"
+
+
+def test_arabic_permission_to_ask_questions_is_natural_and_keeps_stage():
+    d = Dialog()
+    d.send("/start")
+    d.send("lang:ar", callback=True)
+    d.send("ebook:continue", callback=True)
+    d.send("funnel:premium", callback=True)
+    d.send("project:etudes", callback=True)
+    d.bot.sessions[42].stage = "last_name"
+
+    permission = d.send("هل يمكنني أن أسأل بعض الأسئلة؟")
+    assert "نعم، بالطبع" in permission.text
+    assert d.bot.sessions[42].stage == "last_name"
+
+
+def test_safe_documentary_question_can_use_groq_during_contact_collection(tmp_path):
+    class Transport:
+        def __init__(self):
+            self.calls = 0
+
+        def generate(self, _prompt: str) -> str:
+            self.calls += 1
+            return json.dumps({
+                "answer": "Notre agence peut vous accompagner dans la préparation et la traduction du dossier lorsque le parcours l'exige.",
+                "passage_ids": ["documents"],
+            }, ensure_ascii=False)
+
+    transport = Transport()
+    limits = GeminiLimits()
+    composer = GroqDialogue("", "qwen/qwen3.8-27b", limits,
+                            UsageLimit(tmp_path / "usage.json", limits), transport=transport)
+    d = Dialog(composer=composer)
+    d.bot.sessions[42] = Session(language="fr", stage="last_name", funnel_route="consultation")
+
+    answer = d.send("Est-ce que vous aidez pour traduire mon dossier ?")
+    assert transport.calls == 1
+    assert answer.text.startswith("Notre agence peut vous accompagner")
+    assert "Quel est votre nom de famille ?" in answer.text
+    assert d.bot.sessions[42].stage == "last_name"
