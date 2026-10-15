@@ -299,6 +299,22 @@ def test_english_studies_do_not_become_german_level_or_field():
     assert "anglais" in d.say("licence")
 
 
+@pytest.mark.parametrize("message", [
+    "je nai aucun diplome ca pose probleme ?",
+    "je n'ai pas de diplôme, est-ce un problème ?",
+    "ma3andich diplome, normal ?",
+])
+def test_declared_absence_of_degree_answers_then_advances(message):
+    d = Dialog()
+    assert "dernier diplôme" in d.say("Je veux faire un master en informatique")
+
+    answer = d.say(message)
+
+    assert "dernier diplôme" not in answer
+    assert "niveau actuel en allemand" in answer
+    assert d.bot.sessions[7].value("current_degree") == "aucun diplôme obtenu"
+
+
 def test_explicit_professional_goal_is_kept_without_guessing_track():
     d = Dialog()
     assert "type de projet" in d.say("Je veux devenir infirmière en Allemagne")

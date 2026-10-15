@@ -158,6 +158,14 @@ def extract_declared(text: str) -> tuple[list[str], dict[str, str], list[str]]:
         facts["current_degree"] = degree.group(1).lower()
         if degree.group(2):
             facts["current_field"] = _clean(degree.group(2))
+    no_degree = re.search(
+        r"\b(?:je\s+n(?:['’ ]?ai)|j['’ ]?ai)\s+(?:encore\s+)?"
+        r"(?:aucun\s+diplome|pas\s+de\s+diplome)\b|"
+        r"\b(?:ma3andich|maandich)\s+(?:hata\s+)?diplome\b",
+        q,
+    )
+    if no_degree:
+        facts["current_degree"] = "aucun diplôme obtenu"
     desired = re.search(r"\b(?:veux|souhaite|voudrais|aimerais|envisage|poursuivre|faire|suivre|integrer|intégrer)\b[^.!?]{0,45}?\b(master|licence|bachelor|doctorat)\b(?:\s+en\s+([\wÀ-ÿ-]+))?", text, re.I)
     if desired:
         facts["desired_degree"] = desired.group(1).lower()
