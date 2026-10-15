@@ -62,6 +62,17 @@ class MemoryKnowledgeStore:
         self.questions: list[dict] = []
         self.preferences: dict[int, bool] = {}
         self.messages: list[dict] = []
+        self.funnel_sessions: dict[int, dict] = {}
+
+    def load_funnel_state(self, user_id: int) -> dict | None:
+        state = self.funnel_sessions.get(user_id)
+        return dict(state) if state else None
+
+    def save_funnel_state(self, user_id: int, state: dict):
+        self.funnel_sessions[user_id] = dict(state)
+
+    def delete_funnel_state(self, user_id: int):
+        self.funnel_sessions.pop(user_id, None)
 
     def record_question(self, question: str, context: dict, category: str) -> tuple[int, bool] | None:
         clean = reviewable_question(question)
@@ -135,12 +146,43 @@ class MemoryKnowledgeStore:
     def delete_history(self, user_id: int):
         self.messages = [item for item in self.messages if item["user_id"] != user_id]
         self.preferences.pop(user_id, None)
+        self.delete_funnel_state(user_id)
 
     def payment_counts(self) -> dict[str, int]:
         return {}
 
 
 class PostgresKnowledgeStore(PostgresStore):
+    def load_funnel_state(self, user_id: int) -> dict | None:
+        with self.connect() as conn:
+            row = conn.execute(
+                "SELECT language,stage,lead_source,funnel_route,offer_status,private_channel_presented "
+                "FROM telegram.funnel_sessions WHERE telegram_user_id=%s", (user_id,),
+            ).fetchone()
+        if not row:
+            return None
+        return {"language": row[0], "stage": row[1], "lead_source": row[2],
+                "funnel_route": row[3], "offer_status": row[4],
+                "private_channel_presented": row[5]}
+
+    def save_funnel_state(self, user_id: int, state: dict):
+        with self.connect() as conn:
+            conn.execute(
+                "INSERT INTO telegram.funnel_sessions "
+                "(telegram_user_id,language,stage,lead_source,funnel_route,offer_status,private_channel_presented) "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s) ON CONFLICT (telegram_user_id) DO UPDATE SET "
+                "language=EXCLUDED.language,stage=EXCLUDED.stage,lead_source=EXCLUDED.lead_source,"
+                "funnel_route=EXCLUDED.funnel_route,offer_status=EXCLUDED.offer_status,"
+                "private_channel_presented=EXCLUDED.private_channel_presented,updated_at=now()",
+                (user_id, state.get("language"), state.get("stage", "idle"),
+                 state.get("lead_source", "direct"), state.get("funnel_route", "undetermined"),
+                 state.get("offer_status", "exploring"), bool(state.get("private_channel_presented"))),
+            )
+
+    def delete_funnel_state(self, user_id: int):
+        with self.connect() as conn:
+            conn.execute("DELETE FROM telegram.funnel_sessions WHERE telegram_user_id=%s", (user_id,))
+
     def record_question(self, question: str, context: dict, category: str) -> tuple[int, bool] | None:
         from psycopg.types.json import Jsonb
 
@@ -266,6 +308,7 @@ class PostgresKnowledgeStore(PostgresStore):
             with conn.transaction():
                 conn.execute("DELETE FROM telegram.conversation_messages WHERE telegram_user_id=%s", (user_id,))
                 conn.execute("DELETE FROM telegram.history_preferences WHERE telegram_user_id=%s", (user_id,))
+                conn.execute("DELETE FROM telegram.funnel_sessions WHERE telegram_user_id=%s", (user_id,))
 
     def payment_counts(self) -> dict[str, int]:
         with self.connect() as conn:

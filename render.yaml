@@ -38,6 +38,12 @@ services:
         value: "2000"
       - key: PRIVATE_CHANNEL_PRICE_DZD
         value: "500"
+      - key: PAYMENT_PROOF_TELEGRAM
+        value: "0541501832"
+      - key: BARIDIMOB_PAYMENT_DETAILS
+        sync: false
+      - key: CCP_PAYMENT_DETAILS
+        sync: false
       - key: DEBUG_SOURCE_LABELS
         value: "false"
       - key: AI_MAX_CALLS_PER_USER_DAY

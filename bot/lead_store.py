@@ -41,7 +41,7 @@ class PostgresLeadStore(PostgresStore):
         super().init_schema()
         with self.connect() as conn:
             for migration in ("002_conversation.sql", "003_contact_name.sql", "004_knowledge_review.sql",
-                              "005_sales_funnel.sql"):
+                              "005_sales_funnel.sql", "006_funnel_sessions.sql"):
                 sql = (Path(__file__).parent / "sql" / migration).read_text(encoding="utf-8")
                 conn.execute(sql)
 
@@ -57,6 +57,8 @@ class PostgresLeadStore(PostgresStore):
                 raise RuntimeError("Schéma conversation absent. Lancez : python -m bot.main init-db")
             if conn.execute("SELECT to_regclass('telegram.review_questions')").fetchone()[0] is None:
                 raise RuntimeError("Schéma de revue absent. Lancez : python -m bot.main init-db")
+            if conn.execute("SELECT to_regclass('telegram.funnel_sessions')").fetchone()[0] is None:
+                raise RuntimeError("Schéma du tunnel absent. Lancez : python -m bot.main init-db")
 
     def save(self, user_id: int, update_id: int, data: dict, version: str) -> bool:
         from psycopg.types.json import Jsonb

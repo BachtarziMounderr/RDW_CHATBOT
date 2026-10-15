@@ -21,7 +21,7 @@ Vercel n'est pas nécessaire. Le parcours est : GitHub → Render, Telegram → 
 - Accès Telegram initial : privé
 - Administrateurs : `7907520730` et `1953680558`
 
-Le fichier `render.yaml` contient uniquement les valeurs publiques. Les cinq secrets sont demandés par Render lors de la création du Blueprint et ne sont jamais enregistrés dans Git.
+Le fichier `render.yaml` contient uniquement les valeurs publiques. Les secrets sont demandés par Render lors de la création du Blueprint et ne sont jamais enregistrés dans Git.
 
 ## 1. Préparer Neon
 
@@ -67,6 +67,10 @@ Render demandera ces cinq valeurs :
 | `DATABASE_URL` | connexion Neon pooled avec `sslmode=require` |
 | `GROQ_API_KEY` | clé Groq dédiée au bot |
 | `DASHBOARD_PASSWORD` | mot de passe aléatoire d'au moins 16 caractères |
+| `BARIDIMOB_PAYMENT_DETAILS` | coordonnées BaridiMob exactes fournies par RDW |
+| `CCP_PAYMENT_DETAILS` | coordonnées CCP exactes fournies par RDW |
+
+`PAYMENT_PROOF_TELEGRAM=0541501832` est une valeur publique du Blueprint. Les deux coordonnées de paiement peuvent rester vides tant que RDW ne les a pas confirmées ; le bot orientera alors le client vers ce compte sans inventer de numéro.
 
 Générez localement les deux valeurs aléatoires avec :
 

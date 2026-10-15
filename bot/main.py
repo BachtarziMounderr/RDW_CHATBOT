@@ -217,7 +217,26 @@ async def dispatch(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except Exception:
                 LOG.error("Historique volontaire indisponible")
                 reply.text += "\n\nL'historique n'a pas pu être enregistré pour ce message."
-        await context.bot.send_message(update.effective_chat.id, reply.text, reply_markup=keyboard(reply.buttons))
+        if reply.document_path:
+            document_path = Path(reply.document_path)
+            if not document_path.is_file():
+                LOG.error("Document RDW indisponible")
+                await context.bot.send_message(
+                    update.effective_chat.id,
+                    "L'Ebook RDW est momentanément indisponible. Réessayez avec /start.",
+                    reply_markup=keyboard(reply.buttons),
+                )
+            else:
+                with document_path.open("rb") as document:
+                    await context.bot.send_document(
+                        update.effective_chat.id,
+                        document=document,
+                        filename=document_path.name,
+                        caption=reply.text,
+                        reply_markup=keyboard(reply.buttons),
+                    )
+        else:
+            await context.bot.send_message(update.effective_chat.id, reply.text, reply_markup=keyboard(reply.buttons))
         if access_restricted:
             record_exchange("id" if command == "/id" else "authorized")
         await flush_review_notifications(context.application)
@@ -402,6 +421,9 @@ def main():
                                       admin_user_ids=config.admin_user_ids,
                                       consultation_price_dzd=config.consultation_price_dzd,
                                       private_channel_price_dzd=config.private_channel_price_dzd,
+                                      payment_proof_telegram=config.payment_proof_telegram,
+                                      baridimob_payment_details=config.baridimob_payment_details,
+                                      ccp_payment_details=config.ccp_payment_details,
                                       debug_source_labels=config.debug_source_labels)
         app = build_application(config.token, service, assistant_mode=True,
                                 allowed_user_ids=config.allowed_user_ids,

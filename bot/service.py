@@ -17,6 +17,7 @@ PRICE_INTENT = re.compile(r"\b(?:prix|tarif|cout|frais|combien|rembours\w*|adres
 class Reply:
     text: str
     buttons: list[tuple[str, str]] | None = None
+    document_path: str | None = None
 
 
 MENU = [("🎓 Études", "track:etudes"), ("🛠 Ausbildung", "track:ausbildung"),

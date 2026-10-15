@@ -13,15 +13,16 @@ from .service import Reply, SENSITIVE_INPUT, TRACKS
 from .llm import validate_interpretation
 from .gemini_dialogue import safe_facts
 from .knowledge_store import question_key
-from .darija import is_information_request as is_darija_information, is_question as is_darija_question
+from .darija import (is_information_request as is_darija_information,
+                     is_question as is_darija_question, project_tracks as darija_project_tracks)
 from .sales_funnel import AGENCY_INFO, CONSULTATION, PROCEDURE_INFO, SELF_GUIDED, detect_sales_intent
 
 
 CONSENT_VERSION = "rdw_contact_v4_2026-10-13"
 CONSENT_TEXT = (Path(__file__).parent / "data" / f"consent_{CONSENT_VERSION}.txt").read_text(encoding="utf-8").strip()
-YES = {"oui", "ouais", "d'accord", "ok", "exact", "c'est correct", "je confirme"}
-NO = {"non", "pas maintenant", "je refuse", "non merci"}
-SKIP = {"je ne sais pas", "je sais pas", "aucune idee", "pas encore", "passer", "je passe", "a definir"}
+YES = {"oui", "ouais", "d'accord", "ok", "exact", "c'est correct", "je confirme", "نعم", "صحيح", "أوافق", "اوافق"}
+NO = {"non", "pas maintenant", "je refuse", "non merci", "لا", "ليس الآن", "ارفض", "أرفض"}
+SKIP = {"je ne sais pas", "je sais pas", "aucune idee", "pas encore", "passer", "je passe", "a definir", "لا أعرف", "لا اعرف"}
 GREETING = re.compile(r"^(bonjour|bonsoir|salut|hello|coucou|slm|salam|slt|bjr|alo|allô)[! .]*$", re.I)
 THANKS = re.compile(r"^(merci|merci beaucoup|super merci|parfait merci)[! .]*$", re.I)
 FRUSTRATION = re.compile(
@@ -86,9 +87,58 @@ PROMPTS = {
     ],
 }
 
+PROMPTS_AR = {
+    "etudes": [
+        ("desired_degree", "ما هو التكوين أو الشهادة التي تريد دراستها في ألمانيا؟"),
+        ("desired_field", "في أي تخصص تريد الدراسة؟"),
+        ("current_degree", "ما هي آخر شهادة تحصلت عليها؟"),
+        ("german_level", "ما هو مستواك الحالي في اللغة الألمانية؟ يمكنك أن تقول: لا أعرف."),
+        ("timeline", "متى تريد بدء الدراسة؟"),
+        ("current_field", "في أي تخصص درست؟"),
+        ("country", "في أي بلد تقيم حاليا؟"),
+    ],
+    "ausbildung": [
+        ("school_level", "ما هو مستواك الدراسي الحالي؟"),
+        ("desired_field", "ما هي مهنة أو تخصص Ausbildung الذي يهمك؟"),
+        ("german_level", "ما هو مستواك الحالي في اللغة الألمانية؟"),
+        ("timeline", "متى تريد أن تبدأ؟"),
+        ("country", "في أي بلد تقيم حاليا؟"),
+    ],
+    "emploi": [
+        ("current_degree", "ما هو مؤهلك أو تكوينك؟"),
+        ("desired_field", "ما هي المهنة التي تبحث عنها؟"),
+        ("experience", "ما هي خبرتك في هذه المهنة؟"),
+        ("german_level", "ما هو مستواك الحالي في اللغة الألمانية؟"),
+        ("timeline", "ابتداء من متى يمكنك العمل؟"),
+        ("country", "في أي بلد تقيم حاليا؟"),
+    ],
+}
+
+EBOOK_PATH = Path(__file__).parent / "assets" / "Ta-route-vers-l-Allemagne-RDW.pdf"
+
+ARABIC_DOCUMENTARY_ANSWERS = {
+    "mission": "ترافق RDW المشاريع نحو ألمانيا بالتعاون مع Virtulingo، وهي مدرسة ألمانية عبر الإنترنت. يدرس الفريق الملف والإجراءات المناسبة للمشروع.",
+    "filieres": "يركز دليل RDW على ثلاثة مسارات: الدراسة الجامعية، Ausbildung والعمل. ولا يصف عرضا خاصا بالتطوع.",
+    "etudes": "بالنسبة للدراسة، يمكن لوكالتنا تحليل ملفكم، إعداد الوثائق واستهداف المؤسسات. يجب التحقق من شروط القبول حسب حالتكم.",
+    "ausbildung": "بالنسبة إلى Ausbildung، يمكن لوكالتنا المساعدة في تحليل الملف، السيرة الذاتية، الترشحات والتحضير للمقابلات. وتبقى النتيجة مرتبطة بالمشغل والسلطات.",
+    "emploi": "بالنسبة للعمل، يمكن لوكالتنا دراسة ملفكم، إعداد ترشحات مخصصة والتحضير للمقابلات. لا يمكن ضمان التوظيف.",
+    "processus": "نبدأ بدراسة ملفكم ومشروعكم. حسب الخدمة المختارة، يمكننا المساعدة في الوثائق والترشحات والمقابلات وبعض الإجراءات. يتم تأكيد التفاصيل في عرض السعر.",
+    "langue": "تقترح Virtulingo دروسا في الألمانية عبر الإنترنت من A1 إلى B2 حسب الدليل. المستوى المطلوب يتغير حسب المشروع ويجب التحقق منه لكل ترشح.",
+    "cv": "يجب أن تعرض السيرة الذاتية بوضوح تكوينكم وخبراتكم القابلة للتحقق واللغات. ويمكن لوكالتنا تكييفها مع الترشح.",
+    "lettres": "يجب أن تشرح رسالة التحفيز المنصب المستهدف وعلاقته بمهاراتكم وتوفركم. ويوصي الدليل بتكييفها مع كل ترشح.",
+    "documents": "يمكننا مرافقة إعداد الملف، مثل إثباتات التكوين واللغة والترجمة والتصديق والتحقق من الشهادات عند الحاجة. تختلف القائمة الدقيقة حسب المسار والجهة المختصة.",
+    "consultation": "يصف الدليل استشارة عبر مكالمة فيديو أو مكالمة عادية لدراسة المشروع، ثم عرض سعر حسب الخدمات المطلوبة. لا يمكنني تأكيد موعد أو مدة اتصال.",
+    "tarifs": "يشير دليل 2026 إلى 2 000 دج للاستشارة، وتُخصم من خدمة RDW مختارة، ثم يقدم عرض سعر حسب الخدمات. يجب تأكيد الأسعار والشروط الحالية مع RDW.",
+    "tarifs_langue": "يعرض دليل 2026 سعرا فرديا قدره 105 000 دج وباقة مجتمع Virtulingo بسعر 89 000 دج لقراء الدليل. يجب تأكيد الأسعار والشروط قبل التسجيل.",
+    "garanties": "يذكر الدليل ضمانات بصيغ مختلفة بين الصفحات، لذلك لا يمكنني تأكيد شروطها. اطلبوا عقد RDW وعرض السعر.",
+    "installation": "يذكر الدليل متابعة عند الوصول في بعض عروض RDW. وتتحدد الإجراءات المشمولة حسب الخدمة وعرض السعر.",
+    "limites": "يحتوي الدليل على أرقام مختلفة حول التمويل ولا يكفي لتأكيد شرط تأشيرة أو قبول. تحققوا من المؤسسة أو الجهة المختصة.",
+}
+
 
 @dataclass
 class Session:
+    language: str | None = None
     tracks: list[str] = field(default_factory=list)
     primary: str | None = None
     facts: dict[str, dict] = field(default_factory=dict)
@@ -146,6 +196,7 @@ def extract_declared(text: str) -> tuple[list[str], dict[str, str], list[str]]:
     q = normalize(text)
     words = canonical_words(text)
     tracks = [track for track in ("etudes", "ausbildung", "emploi", "volontariat") if track in words]
+    tracks = list(dict.fromkeys(tracks + darija_project_tracks(text)))
     if (re.search(r"\b(?:universite|faculte|etudier)\b", q) or
         re.search(r"\b(?:veux|souhaite|voudrais|aimerais|poursuivre|faire)\b[^.!?]{0,40}\b(?:master|licence|bachelor|doctorat)\b", q)) and "etudes" not in tracks:
         tracks.insert(0, "etudes")
@@ -234,6 +285,8 @@ class ConversationService:
     def __init__(self, store, corpus: Corpus | None = None, interpreter=None, clock=None,
                  composer=None, review_store=None, admin_user_ids: frozenset[int] = frozenset(),
                  consultation_price_dzd: int = 2000, private_channel_price_dzd: int = 500,
+                 payment_proof_telegram: str = "0541501832",
+                 baridimob_payment_details: str = "", ccp_payment_details: str = "",
                  debug_source_labels: bool = False):
         self.store = store
         self.corpus = corpus or Corpus()
@@ -244,6 +297,9 @@ class ConversationService:
         self.admin_user_ids = frozenset(admin_user_ids)
         self.consultation_price_dzd = consultation_price_dzd
         self.private_channel_price_dzd = private_channel_price_dzd
+        self.payment_proof_telegram = payment_proof_telegram
+        self.baridimob_payment_details = baridimob_payment_details
+        self.ccp_payment_details = ccp_payment_details
         self.debug_source_labels = debug_source_labels
         self.clock = clock or (lambda: datetime.now(timezone.utc))
         self.sessions: dict[int, Session] = {}
@@ -252,6 +308,16 @@ class ConversationService:
         self.rate: dict[int, tuple[datetime, int]] = {}
 
     def handle(self, user_id: int, update_id: int, value: str, callback: bool = False) -> Reply | None:
+        if user_id not in self.sessions and self.review_store and hasattr(self.review_store, "load_funnel_state"):
+            try:
+                restored = self.review_store.load_funnel_state(user_id)
+                if restored:
+                    allowed_stages = {"idle", "paused", "language_choice", "ebook_wait", "premium_choice",
+                                      "premium_project", "private_channel_offer", "vip_payment"}
+                    if restored.get("stage") in allowed_stages:
+                        self.sessions[user_id] = Session(**restored)
+            except Exception:
+                pass
         before = self.sessions.get(user_id)
         previous_stage = before.stage if before else "idle"
         previous_slot = before.current_slot if before else None
@@ -261,6 +327,20 @@ class ConversationService:
         repeated = bool(before and key and key == before.last_message_key)
         reply = self._handle_local(user_id, update_id, value, callback)
         session = self.sessions.get(user_id)
+        if session and self.review_store and hasattr(self.review_store, "save_funnel_state"):
+            try:
+                persistable_stages = {"idle", "paused", "language_choice", "ebook_wait", "premium_choice",
+                                      "premium_project", "private_channel_offer", "vip_payment"}
+                self.review_store.save_funnel_state(user_id, {
+                    "language": session.language,
+                    "stage": session.stage if session.stage in persistable_stages else "idle",
+                    "lead_source": session.lead_source,
+                    "funnel_route": session.funnel_route,
+                    "offer_status": session.offer_status,
+                    "private_channel_presented": session.private_channel_presented,
+                })
+            except Exception:
+                pass
         if session and key and not value.strip().startswith("/"):
             session.repeat_count = session.repeat_count + 1 if repeated else 1
             session.last_message_key = key
@@ -289,7 +369,8 @@ class ConversationService:
                 session.stalled_count = 0
             if stalled_this_turn and session.stalled_count >= 2 and not reply.buttons and " /faq" not in reply.text:
                 reply = Reply(reply.text + "\n\nPour explorer les questions fréquentes, utilisez /faq.", reply.buttons)
-        if (not self.composer or not reply or callback or value.strip().startswith("/") or reply.buttons
+        buttons_without_question = bool(reply and reply.buttons and not self._looks_like_question(value))
+        if (not self.composer or not reply or callback or value.strip().startswith("/") or buttons_without_question
                 or THANKS.match(value.strip()) or FRUSTRATION.search(value)):
             return self._with_source_label(reply, "RAG")
         private_stages = {"last_name", "first_name", "contact_detail", "contact_confirm", "consent"}
@@ -344,14 +425,14 @@ class ConversationService:
         except Exception:
             if private_offer_due:
                 session.private_channel_presented = True
-                reply = Reply(reply.text + "\n\n" + self._private_channel_teaser(), reply.buttons)
+                reply = Reply(reply.text + "\n\n" + self._private_channel_teaser(session), reply.buttons)
             return self._with_source_label(reply, "RAG")
         if not generated:
             # Les détails fournisseur restent dans le statut local. Le client reçoit
             # directement la réponse documentaire validée, sans diagnostic technique.
             if private_offer_due:
                 session.private_channel_presented = True
-                reply = Reply(reply.text + "\n\n" + self._private_channel_teaser(), reply.buttons)
+                reply = Reply(reply.text + "\n\n" + self._private_channel_teaser(session), reply.buttons)
             return self._with_source_label(reply, "RAG")
         if hasattr(self.composer, "last_passage_ids"):
             used_ids = set(self.composer.last_passage_ids or ())
@@ -366,14 +447,23 @@ class ConversationService:
             normalized_generated = normalize(generated)
             required_offer_details = ("canal", "live", "500", "vie", "unique", "/canal")
             if not all(item in normalized_generated for item in required_offer_details):
-                generated += "\n\n" + self._private_channel_teaser()
-        body = generated + ("\n\n" + next_question if next_question else "")
+                generated += "\n\n" + self._private_channel_teaser(session)
+        if session.stage == "premium_choice":
+            body = generated + "\n\n" + self._premium_pitch(session).text
+        elif session.stage == "premium_project":
+            body = generated + "\n\n" + self._premium_start(session).text
+        elif session.stage == "private_channel_offer":
+            body = generated + "\n\n" + self._private_channel_offer(session)
+        elif session.stage == "vip_payment":
+            body = generated + "\n\n" + self._payment_instructions(session)
+        else:
+            body = generated + ("\n\n" + next_question if next_question else "")
         return self._with_source_label(Reply(body, reply.buttons), getattr(self.composer, "provider_label", "IA"))
 
     def _with_source_label(self, reply: Reply | None, source: str) -> Reply | None:
         if not reply or not self.debug_source_labels:
             return reply
-        return Reply(f"Réponse {source} :\n{reply.text}", reply.buttons)
+        return Reply(f"Réponse {source} :\n{reply.text}", reply.buttons, reply.document_path)
 
     def _should_suggest_private_channel(self, session: Session, topic: str | None,
                                         text: str, repeated: bool) -> bool:
@@ -437,6 +527,41 @@ class ConversationService:
         if count >= 20 and value.strip().lower() not in {"/supprimer", "/mes_donnees"}:
             return Reply("Vous avez envoyé beaucoup de messages. Réessayez dans une minute.")
         if callback:
+            if value in {"lang:fr", "lang:ar"}:
+                s.language = value.partition(":")[2]
+                s.stage = "ebook_wait"
+                return self._ebook_delivery(s)
+            if value == "ebook:continue":
+                s.stage = "premium_choice"
+                return self._premium_pitch(s)
+            if value == "funnel:premium":
+                s.funnel_route = "consultation"
+                s.offer_status = "premium_interested"
+                s.stage = "premium_project"
+                return self._premium_start(s)
+            if value == "funnel:self":
+                s.funnel_route = "private_channel"
+                s.offer_status = "private_channel_presented"
+                s.private_channel_presented = True
+                s.stage = "private_channel_offer"
+                return Reply(self._private_channel_offer(s), self._private_channel_buttons(s))
+            if value == "vip:join":
+                s.funnel_route = "private_channel"
+                s.offer_status = "payment_instructions_shown"
+                s.stage = "vip_payment"
+                return Reply(self._payment_instructions(s), self._vip_payment_buttons(s))
+            if value == "vip:consultant":
+                s.funnel_route = "consultation"
+                s.stage = "offer_contact"
+                return self._contact_flow(s, user_id, update_id, "oui")
+            if value.startswith("project:"):
+                track = value.partition(":")[2]
+                if track not in SUPPORTED_TRACKS:
+                    return Reply(self._t(s, "Ce choix n'est plus valable.", "هذا الاختيار لم يعد صالحا."))
+                s.tracks = [track]
+                s.primary = track
+                s.stage = "explore"
+                return self._next(s)
             value = {"summary:yes": "oui", "summary:no": "non", "offer:yes": "oui",
                      "offer:no": "non", "coord:yes": "oui", "coord:no": "non",
                      "consent:accept": "j'accepte", "consent:decline": "je refuse"}.get(value, "")
@@ -446,8 +571,8 @@ class ConversationService:
         command = text.split(maxsplit=1)[0].lower() if text else ""
         if command == "/start":
             source = "canal_gratuit" if len(text.split()) > 1 and normalize(text.split(maxsplit=1)[1]) == "canal_gratuit" else "direct"
-            self.sessions[user_id] = Session(updated_at=now, lead_source=source)
-            return Reply(self._welcome())
+            self.sessions[user_id] = Session(updated_at=now, lead_source=source, stage="language_choice")
+            return Reply(self._language_welcome(), [("🇫🇷 Français", "lang:fr"), ("🇩🇿 العربية", "lang:ar")])
         if command == "/aide":
             return Reply("Décrivez naturellement votre projet ou posez une question sur RDW. /guide présente les sujets du guide ; /faq affiche les réponses fréquentes ; /canal présente le canal privé d'informations et de lives. /reprendre reprend un échange ; /annuler le met en pause ; /humain prépare une demande de consultation ; /mes_donnees montre la fiche enregistrée ; /supprimer l'efface ; /source indique le passage utilisé. N'envoyez pas de document sensible.")
         if command == "/guide":
@@ -475,8 +600,7 @@ class ConversationService:
             s.offer_status = "private_channel_presented"
             s.private_channel_presented = True
             s.stage = "private_channel_offer"
-            return Reply(self._private_channel_offer(), [("Recevoir les modalités", "offer:yes"),
-                                                         ("Pas maintenant", "offer:no")])
+            return Reply(self._private_channel_offer(s), self._private_channel_buttons(s))
         if command == "/annuler":
             if s.stage in {"last_name", "first_name", "contact_detail", "contact_confirm", "consent"}:
                 s.last_name = s.first_name = s.contact_method = s.contact_detail = None
@@ -523,9 +647,11 @@ class ConversationService:
         if SENSITIVE_INPUT.search(text) or (not contact_number_expected and re.search(r"\b\d{9,}\b", text)):
             return Reply("Ne transmettez pas de passeport, de matricule ni de document sensible dans cette conversation.")
         if GREETING.match(text):
+            if s.stage == "language_choice":
+                return Reply(self._language_welcome(), [("🇫🇷 Français", "lang:fr"), ("🇩🇿 العربية", "lang:ar")])
             if s.stage == "paused":
                 return Reply("Bonjour ! Votre projet est en pause. Utilisez /reprendre pour le poursuivre ou /start pour commencer un nouveau projet.")
-            return Reply(self._welcome() if s.stage == "idle" else "Bonjour ! " + self._stage_prompt(s))
+            return Reply(self._welcome(s) if s.stage == "idle" else self._t(s, "Bonjour ! ", "مرحبا! ") + self._stage_prompt(s))
         if THANKS.match(text):
             if s.stage == "paused":
                 return Reply("Avec plaisir. Utilisez /reprendre si vous souhaitez continuer votre projet.")
@@ -534,6 +660,39 @@ class ConversationService:
             if s.stage == "route_clarify":
                 s.stage = "idle"
             return Reply("Vous avez raison, je n'ai pas traité votre demande correctement. Reformulez simplement la question à laquelle vous voulez une réponse ; je la traiterai avant de poursuivre l'orientation.")
+        if s.stage == "language_choice":
+            normalized_language = normalize(text)
+            if normalized_language in {"francais", "français", "fr"}:
+                s.language, s.stage = "fr", "ebook_wait"
+                return self._ebook_delivery(s)
+            if normalized_language in {"arabe", "arabic", "العربية", "عربي"}:
+                s.language, s.stage = "ar", "ebook_wait"
+                return self._ebook_delivery(s)
+            # Compatibilité avec une personne qui écrit directement au lieu d'utiliser le bouton.
+            s.language = "ar" if re.search(r"[\u0600-\u06ff]", text) else "fr"
+            s.stage = "idle"
+        if s.stage == "ebook_wait":
+            if self._looks_like_question(text):
+                return Reply(self._answer_question(s, text) + "\n\n" + self._t(
+                    s, "Quand vous êtes prêt, continuez le parcours.", "عندما تكونون مستعدين، واصلوا المسار."
+                ), [(self._t(s, "📖 J'ai lu l'Ebook / Continuer", "📖 قرأت الدليل / متابعة"), "ebook:continue")])
+            return Reply(self._t(s, "Consultez l'Ebook puis continuez.", "اطلعوا على الدليل ثم واصلوا."),
+                         [(self._t(s, "📖 J'ai lu l'Ebook / Continuer", "📖 قرأت الدليل / متابعة"), "ebook:continue")])
+        if s.stage == "premium_choice":
+            if self._looks_like_question(text):
+                answered = self._answer_question(s, text)
+                pitch = self._premium_pitch(s)
+                return Reply(answered + "\n\n" + pitch.text, pitch.buttons)
+            return self._premium_pitch(s)
+        if s.stage == "premium_project" and self._looks_like_question(text):
+            answered = self._answer_question(s, text)
+            prompt = self._premium_start(s)
+            return Reply(answered + "\n\n" + prompt.text, prompt.buttons)
+        if s.stage == "vip_payment":
+            if self._looks_like_question(text):
+                return Reply(self._answer_question(s, text) + "\n\n" + self._payment_instructions(s),
+                             self._vip_payment_buttons(s))
+            return Reply(self._payment_instructions(s), self._vip_payment_buttons(s))
         if s.stage == "paused":
             return Reply(self._answer_question(s, text) if self._looks_like_question(text) else "L'échange est en pause. Utilisez /reprendre pour continuer, ou posez une question sur RDW.")
         if s.stage == "clarify_track":
@@ -557,7 +716,7 @@ class ConversationService:
             if intent == SELF_GUIDED:
                 s.funnel_route = "private_channel"
                 s.stage = "private_channel_offer"
-                return Reply(self._private_channel_offer())
+                return Reply(self._private_channel_offer(s), self._private_channel_buttons(s))
             if intent == CONSULTATION or re.search(r"\b(?:avec rdw|avec vous|agence)\b", normalize(text)):
                 s.funnel_route = "consultation"
                 s.stage = "idle"
@@ -574,7 +733,7 @@ class ConversationService:
                 s.stage = "idle"
                 return Reply("D'accord. Vous pouvez continuer à me poser vos questions sur RDW ou sur les démarches présentées dans le guide.")
             if self._looks_like_question(text):
-                return Reply(self._answer_question(s, text) + "\n\n" + self._private_channel_offer())
+                return Reply(self._answer_question(s, text) + "\n\n" + self._private_channel_offer(s), self._private_channel_buttons(s))
             return Reply("Souhaitez-vous recevoir les informations d'accès à ce canal privé lorsqu'elles seront disponibles ?")
         if s.stage in {"summary_confirm", "offer_contact", "last_name", "first_name", "contact_detail", "contact_confirm", "consent"}:
             if self._looks_like_question(text) and normalize(text) not in YES | NO:
@@ -605,7 +764,7 @@ class ConversationService:
             s.funnel_route = "private_channel"
             s.stage = "private_channel_offer"
             answer = self._answer_question(s, text) if self._looks_like_question(text) else None
-            return Reply((answer + "\n\n" if answer else "") + self._private_channel_offer())
+            return Reply((answer + "\n\n" if answer else "") + self._private_channel_offer(s), self._private_channel_buttons(s))
         if sales_intent == PROCEDURE_INFO and not s.tracks:
             s.funnel_route = "procedure_info"
 
@@ -714,21 +873,112 @@ class ConversationService:
     def _safe_context(self, s: Session) -> dict:
         return {"tracks": s.tracks[:4], "facts": {k: v["value"] for k, v in s.facts.items() if v["status"] == "declared"}}
 
-    def _welcome(self) -> str:
-        return ("Bonjour et bienvenue chez RDW ! Je suis l'assistant virtuel de l'agence. "
-                "RDW accompagne des projets vers l'Allemagne : études, Ausbildung ou emploi, en lien avec Virtulingo. "
-                "Je peux répondre à vos questions à partir du guide, expliquer les démarches et préparer votre demande si vous souhaitez avancer avec l'agence. "
-                "Que souhaitez-vous savoir ou préparer pour votre projet en Allemagne ?")
+    def _t(self, s: Session, french: str, arabic: str) -> str:
+        return arabic if s.language == "ar" else french
 
-    def _private_channel_offer(self) -> str:
-        return ("Pour approfondir les démarches, nous proposons un canal Telegram privé avec des informations complémentaires et des lives, "
-                f"avec un accès à vie après un paiement unique de {self.private_channel_price_dzd:,} DA. ".replace(",", " ")
-                + "Pendant ce test, notre équipe confirme manuellement le paiement et l'accès. Souhaitez-vous recevoir les modalités ?")
+    def _language_welcome(self) -> str:
+        return ("Bonjour et bienvenue chez RDW ! Je suis l'assistant virtuel de notre agence. "
+                "Avec Virtulingo, nous accompagnons les projets vers l'Allemagne : études, Ausbildung ou emploi. "
+                "Je vais vous envoyer notre guide Ebook gratuit, répondre à vos questions et préparer votre demande si vous souhaitez avancer avec nous. "
+                "Que souhaitez-vous savoir ou préparer ? Vous pourrez me le dire après avoir choisi votre langue.\n\n"
+                "مرحبا بكم في RDW! سأرسل لكم دليلنا المجاني وأساعدكم في اختيار الحل المناسب لمشروعكم نحو ألمانيا.\n\n"
+                "Choisissez votre langue / اختر لغتك :")
 
-    def _private_channel_teaser(self) -> str:
-        return ("Si vous souhaitez aller plus loin à votre rythme, notre canal Telegram privé réunit des informations complémentaires "
-                f"et des lives, avec un accès à vie pour un paiement unique de {self.private_channel_price_dzd:,} DA. ".replace(",", " ")
-                + "Écrivez /canal pour connaître les modalités d'accès.")
+    def _ebook_delivery(self, s: Session) -> Reply:
+        text = self._t(
+            s,
+            "Voici votre Ebook gratuit RDW. Il présente les principales voies vers l'Allemagne, les démarches et les services de notre agence. Prenez le temps de le consulter, puis continuez quand vous êtes prêt.",
+            "إليكم دليل RDW المجاني. يشرح أهم المسارات نحو ألمانيا والإجراءات وخدمات وكالتنا. اطلعوا عليه ثم واصلوا عندما تكونون مستعدين.",
+        )
+        button = self._t(s, "📖 J'ai lu l'Ebook / Continuer", "📖 قرأت الدليل / متابعة")
+        return Reply(text, [(button, "ebook:continue")], str(EBOOK_PATH))
+
+    def _premium_pitch(self, s: Session) -> Reply:
+        text = self._t(
+            s,
+            ("Notre accompagnement Premium commence par l'étude de votre profil et de votre projet. Selon la prestation choisie, notre agence peut vous accompagner pour la langue, la préparation et la traduction du dossier, le CV, les lettres ciblées, les candidatures et la préparation aux entretiens. Les services exacts sont confirmés dans un devis adapté à votre situation.\n\n"
+             "Préférez-vous être accompagné par notre agence ou effectuer les démarches vous-même ?"),
+            ("تبدأ مرافقتنا المميزة بدراسة ملفكم ومشروعكم. حسب الخدمة المختارة، يمكن لوكالتنا مرافقتكم في اللغة، إعداد وترجمة الملف، السيرة الذاتية، رسائل التحفيز المخصصة، الترشحات والتحضير للمقابلات. يتم تأكيد الخدمات الدقيقة في عرض سعر يناسب حالتكم.\n\n"
+             "هل تفضلون مرافقة وكالتنا أم القيام بالإجراءات بأنفسكم؟"),
+        )
+        return Reply(text, [
+            (self._t(s, "💎 Accompagnement Premium", "💎 المرافقة المميزة"), "funnel:premium"),
+            (self._t(s, "🛠️ Faire les démarches moi-même", "🛠️ أقوم بالإجراءات بنفسي"), "funnel:self"),
+        ])
+
+    def _premium_start(self, s: Session) -> Reply:
+        text = self._t(
+            s,
+            (f"Très bien. Notre agence va d'abord comprendre votre projet, puis recueillir uniquement les informations utiles avec votre accord. Une consultation avec un conseiller commercial est indiquée à {self.consultation_price_dzd:,} DA ; les autres prestations font ensuite l'objet d'un devis. Quel projet préparez-vous ?").replace(",", " "),
+            (f"جيد. ستفهم وكالتنا مشروعكم أولا، ثم تجمع المعلومات الضرورية فقط بعد موافقتكم. سعر الاستشارة مع مستشار تجاري هو {self.consultation_price_dzd:,} دج، ثم تُحدد بقية الخدمات في عرض سعر. ما هو مشروعكم؟").replace(",", " "),
+        )
+        return Reply(text, [
+            (self._t(s, "🎓 Études", "🎓 دراسة"), "project:etudes"),
+            ("🛠 Ausbildung", "project:ausbildung"),
+            (self._t(s, "💼 Emploi", "💼 عمل"), "project:emploi"),
+        ])
+
+    def _private_channel_buttons(self, s: Session) -> list[tuple[str, str]]:
+        return [
+            (self._t(s, "🚀 Rejoindre le canal VIP", "🚀 الانضمام إلى قناة VIP"), "vip:join"),
+            (self._t(s, "📞 Parler à un conseiller", "📞 التحدث مع مستشار"), "vip:consultant"),
+        ]
+
+    def _private_channel_offer(self, s: Session) -> str:
+        price = f"{self.private_channel_price_dzd:,}".replace(",", " ")
+        return self._t(
+            s,
+            ("Vous pouvez avancer seul avec l'Ebook gratuit. Pour obtenir davantage de détails et éviter de rester bloqué, notre canal Telegram privé propose des informations complémentaires, des lives et un espace d'entraide. "
+             f"Nous proposons un accès à vie pour {price} DA, avec un paiement unique. Vous pourrez aussi demander ensuite un accompagnement Premium si nécessaire."),
+            ("يمكنكم التقدم بمفردكم باستعمال الدليل المجاني. للحصول على تفاصيل أكثر وتفادي التعطل، توفر قناة Telegram الخاصة معلومات إضافية وبثوثا مباشرة ومساحة للتعاون. "
+             f"سعر الدخول {price} دج بدفع واحد، والدخول صالح مدى الحياة. ويمكنكم لاحقا طلب المرافقة المميزة عند الحاجة."),
+        )
+
+    def _private_channel_teaser(self, s: Session) -> str:
+        price = f"{self.private_channel_price_dzd:,}".replace(",", " ")
+        return self._t(
+            s,
+            f"Pour aller plus loin à votre rythme, notre canal Telegram privé propose plus de détails et des lives, avec un accès à vie pour un paiement unique de {price} DA. Écrivez /canal pour recevoir les modalités.",
+            f"للحصول على تفاصيل أكثر وبثوث مباشرة، توفر قناتنا الخاصة دخولا مدى الحياة بدفع واحد قدره {price} دج. اكتب /canal لمعرفة طريقة الدخول.",
+        )
+
+    def _vip_payment_buttons(self, s: Session) -> list[tuple[str, str]]:
+        return [(self._t(s, "📞 Parler à un conseiller", "📞 التحدث مع مستشار"), "vip:consultant")]
+
+    def _payment_instructions(self, s: Session) -> str:
+        price = f"{self.private_channel_price_dzd:,}".replace(",", " ")
+        if self.baridimob_payment_details or self.ccp_payment_details:
+            methods = []
+            if self.baridimob_payment_details:
+                methods.append(f"BaridiMob : {self.baridimob_payment_details}")
+            if self.ccp_payment_details:
+                methods.append(f"CCP : {self.ccp_payment_details}")
+            details_fr = "\n".join(methods)
+            details_ar = details_fr
+        else:
+            details_fr = f"Demandez d'abord les coordonnées BaridiMob ou CCP au compte Telegram {self.payment_proof_telegram}."
+            details_ar = f"اطلبوا أولا معلومات BaridiMob أو CCP من حساب Telegram رقم {self.payment_proof_telegram}."
+        return self._t(
+            s,
+            (f"L'accès VIP coûte {price} DA, en paiement unique pour un accès à vie.\n\n{details_fr}\n\n"
+             f"Après le paiement, envoyez la preuve au compte Telegram {self.payment_proof_telegram}. L'administrateur vérifiera le paiement manuellement puis vous ajoutera au canal. Le bot ne valide aucune capture ni aucun paiement."),
+            (f"سعر الدخول إلى قناة VIP هو {price} دج، بدفع واحد ودخول مدى الحياة.\n\n{details_ar}\n\n"
+             f"بعد الدفع، أرسلوا الإثبات إلى حساب Telegram رقم {self.payment_proof_telegram}. سيتحقق المسؤول من الدفع يدويا ثم يضيفكم إلى القناة. البوت لا يؤكد أي صورة أو دفع."),
+        )
+
+    def _consent_text(self, s: Session) -> str:
+        if s.language != "ar":
+            return CONSENT_TEXT
+        return ("بموافقتكم، تسجل RDW الاسم واللقب والمشروع والمعلومات التي صرحتم بها ورقم الهاتف المؤكد، "
+                "حتى يدرس الفريق الطلب ويتصل بكم. يمكنكم طلب الحذف باستعمال /supprimer. "
+                "النص الفرنسي أدناه هو النص المرجعي لهذه الموافقة:\n\n" + CONSENT_TEXT)
+
+    def _welcome(self, s: Session) -> str:
+        return self._t(
+            s,
+            "Bienvenue chez RDW. Je peux répondre à vos questions à partir de l'Ebook et vous aider à avancer avec notre agence ou par vous-même. Que souhaitez-vous savoir ou préparer ?",
+            "مرحبا بكم في RDW. يمكنني الإجابة عن أسئلتكم اعتمادا على الدليل ومساعدتكم على التقدم مع وكالتنا أو بأنفسكم.",
+        )
 
     def _public_context(self, text: str) -> list[dict]:
         return [{"id": p["id"], "citation": p["citation"], "text": p["text"]}
@@ -775,29 +1025,38 @@ class ConversationService:
         if words & {"volontariat", "fsj", "bfd", "esc"}:
             if text not in s.open_questions and len(s.open_questions) < 3:
                 s.open_questions.append(text[:160])
-            return "Le guide RDW ne décrit pas de prestation pour le volontariat. Je peux joindre cette question à une demande de contact si vous le souhaitez."
+            return self._t(s,
+                           "Le guide RDW ne décrit pas de prestation pour le volontariat. Je peux joindre cette question à une demande de contact si vous le souhaitez.",
+                           "لا يصف دليل RDW خدمة خاصة بالتطوع. يمكنني إرفاق هذا السؤال بطلب تواصل إذا أردتم.")
         topic = topic_override or self.knowledge._topic(text)
         if topic is None:
             if text not in s.open_questions and len(s.open_questions) < 3:
                 s.open_questions.append(text[:160])
-            return "Je n'ai pas de réponse vérifiée à cette question dans la base RDW. Si vous souhaitez un rappel, je pourrai joindre cette question à votre demande."
+            return self._t(s,
+                           "Je n'ai pas de réponse vérifiée à cette question dans la base RDW. Si vous souhaitez un rappel, je pourrai joindre cette question à votre demande.",
+                           "لا أجد جوابا موثقا عن هذا السؤال في قاعدة RDW. يمكنني إرفاقه بطلب تواصل إذا أردتم.")
         if topic == "cv_documents":
             cv = self.knowledge.by_id["cv"]
             docs = self.knowledge.by_id["documents"]
             s.last_source = cv["citation"] + " " + docs["citation"]
             s.last_topic = "documents"
-            return "Le CV présente votre formation, vos expériences vérifiables et vos langues. Le dossier peut aussi comprendre une lettre ciblée et des justificatifs ; les pièces exactes dépendent du parcours."
+            return self._t(s,
+                           "Le CV présente votre formation, vos expériences vérifiables et vos langues. Le dossier peut aussi comprendre une lettre ciblée et des justificatifs ; les pièces exactes dépendent du parcours.",
+                           "تعرض السيرة الذاتية تكوينكم وخبراتكم القابلة للتحقق واللغات. ويمكن أن يضم الملف رسالة مخصصة ووثائق إثبات، وتختلف القطع الدقيقة حسب المسار.")
         if topic == "guide_overview":
             s.last_topic = "guide_overview"
-            return self.knowledge.guide_overview()
+            return self._t(s, self.knowledge.guide_overview(),
+                           "يشرح دليل RDW الدراسة وAusbildung والعمل، وطريقة المرافقة، واللغة الألمانية، والسيرة الذاتية، ورسائل التحفيز، والوثائق، والاستشارة، والأسعار المذكورة، والاستقرار وحدود الضمانات والقبول والتأشيرة.")
         p = self.knowledge.by_id[topic]
         s.last_source = p["citation"]
         s.last_topic = topic
         if topic == "limites":
             if text not in s.open_questions and len(s.open_questions) < 3:
                 s.open_questions.append(text[:160])
-            return p["test_answer"] + " Si vous souhaitez un rappel, je peux joindre votre question à la demande."
-        return p["test_answer"]
+            answer = ARABIC_DOCUMENTARY_ANSWERS[topic] if s.language == "ar" else p["test_answer"]
+            return answer + self._t(s, " Si vous souhaitez un rappel, je peux joindre votre question à la demande.",
+                                    " ويمكنني إرفاق سؤالكم بطلب تواصل إذا أردتم.")
+        return ARABIC_DOCUMENTARY_ANSWERS.get(topic, p["test_answer"]) if s.language == "ar" else p["test_answer"]
 
     def _choose_track(self, text: str, choices: list[str]) -> str | None:
         words = canonical_words(text)
@@ -831,7 +1090,7 @@ class ConversationService:
         return False
 
     def _prompts(self, s: Session) -> list[tuple[str, str]]:
-        prompts = PROMPTS[s.primary]
+        prompts = PROMPTS_AR[s.primary] if s.language == "ar" and s.primary in PROMPTS_AR else PROMPTS[s.primary]
         if s.primary == "etudes" and s.value("study_language") == "anglais":
             return [("english_level", "Quel est votre niveau actuel en anglais ? Vous pouvez dire « je ne sais pas ».")
                     if slot == "german_level" else (slot, prompt) for slot, prompt in prompts]
@@ -840,6 +1099,19 @@ class ConversationService:
     def _stage_prompt(self, s: Session) -> str:
         if s.current_slot and s.primary and s.stage not in {"last_name", "first_name", "contact_detail", "contact_confirm", "consent"}:
             return next((prompt for slot, prompt in self._prompts(s) if slot == s.current_slot), "Quelle précision souhaitez-vous ajouter ?")
+        if s.language == "ar":
+            return {
+                "summary_confirm": "هل فهمت مشروعكم بشكل صحيح؟",
+                "offer_contact": "هل تريدون أن يتصل بكم مستشار من RDW؟",
+                "route_clarify": "هل تريدون القيام بالإجراءات بأنفسكم أم دراسة مشروعكم مع RDW؟",
+                "private_channel_offer": "هل تريدون معرفة طريقة الدخول إلى القناة الخاصة؟",
+                "last_name": "ما هو لقبكم؟",
+                "first_name": "ما هو اسمكم؟",
+                "contact_detail": "ما هو رقم الهاتف الذي تريدون استعماله؟ يمكنكم كتابة رقم جزائري مثل 0550123456.",
+                "contact_confirm": "هل هذا الرقم صحيح؟",
+                "consent": "هل توافقون على التسجيل الموضح أعلاه؟",
+                "choose_primary": "أي مسار تريدون دراسته أولا؟",
+            }.get(s.stage, "ما هو المشروع الذي تريدون دراسته؟")
         return {
             "summary_confirm": "Est-ce que mon résumé est correct ?",
             "offer_contact": "Souhaitez-vous qu'un conseiller RDW vous contacte ?",
@@ -855,21 +1127,36 @@ class ConversationService:
 
     def _next(self, s: Session) -> Reply:
         if not s.primary:
-            return Reply("Quelle voie vous intéresse : études, Ausbildung ou emploi ?")
+            return Reply(self._t(s, "Quelle voie vous intéresse : études, Ausbildung ou emploi ?",
+                                 "أي مسار يهمكم: الدراسة، Ausbildung أم العمل؟"))
         # Limite par parcours ; les informations spontanées suppriment les questions correspondantes.
         max_questions = 4 if s.primary == "ausbildung" else 5
         if s.asked >= max_questions:
             s.stage = "summary_confirm"
-            return Reply(self._summary(s) + " Est-ce que j'ai bien compris ?", [("Oui", "summary:yes"), ("Corriger", "summary:no")])
+            return Reply(self._summary(s) + self._t(s, " Est-ce que j'ai bien compris ?", " هل فهمتكم بشكل صحيح؟"),
+                         [(self._t(s, "Oui", "نعم"), "summary:yes"),
+                          (self._t(s, "Corriger", "تصحيح"), "summary:no")])
         for slot, prompt in self._prompts(s):
             if slot not in s.facts and slot not in s.skipped:
                 s.current_slot = slot
                 s.asked += 1
                 return Reply(prompt)
         s.stage = "summary_confirm"
-        return Reply(self._summary(s) + " Est-ce que j'ai bien compris ?", [("Oui", "summary:yes"), ("Corriger", "summary:no")])
+        return Reply(self._summary(s) + self._t(s, " Est-ce que j'ai bien compris ?", " هل فهمتكم بشكل صحيح؟"),
+                     [(self._t(s, "Oui", "نعم"), "summary:yes"),
+                      (self._t(s, "Corriger", "تصحيح"), "summary:no")])
 
     def _summary(self, s: Session) -> str:
+        if s.language == "ar":
+            labels = {"etudes": "الدراسة", "ausbildung": "Ausbildung", "emploi": "العمل"}
+            project = labels.get(s.primary, "مشروع نحو ألمانيا")
+            details = []
+            for key, label in (("desired_degree", "التكوين المطلوب"), ("desired_field", "التخصص"),
+                               ("current_degree", "آخر شهادة"), ("german_level", "الألمانية"),
+                               ("experience", "الخبرة"), ("timeline", "الفترة"), ("country", "الإقامة")):
+                if s.value(key):
+                    details.append(f"{label}: {s.value(key)}")
+            return f"أنتم تفكرون في {project} في ألمانيا" + (" (" + "؛ ".join(details) + ")" if details else "") + "."
         if not s.tracks:
             return "Vous souhaitez être recontacté par RDW au sujet de votre projet en Allemagne."
         tracks = " et ".join(TRACK_LABELS[t] for t in s.tracks) if s.tracks else "un projet en Allemagne"
@@ -919,7 +1206,11 @@ class ConversationService:
                 s.stage = "offer_contact"
                 s.funnel_route = "consultation"
                 price = f"{self.consultation_price_dzd:,}".replace(",", " ")
-                return Reply(f"La consultation RDW est indiquée à {price} DA. Souhaitez-vous que j'enregistre votre demande afin que l'équipe examine votre projet ?", [("Oui", "offer:yes"), ("Non merci", "offer:no")])
+                return Reply(self._t(s,
+                                     f"La consultation RDW est indiquée à {price} DA. Souhaitez-vous que j'enregistre votre demande afin que l'équipe examine votre projet ?",
+                                     f"سعر استشارة RDW هو {price} دج. هل تريدون أن أسجل طلبكم حتى يدرس الفريق مشروعكم؟"),
+                             [(self._t(s, "Oui", "نعم"), "offer:yes"),
+                              (self._t(s, "Non merci", "لا شكرا"), "offer:no")])
             tracks, facts, _ = extract_declared(text)
             tracks = [track for track in tracks if track in SUPPORTED_TRACKS]
             if tracks or facts:
@@ -941,33 +1232,42 @@ class ConversationService:
             if answer in NO:
                 s.stage = "paused" if s.primary else "idle"
                 return Reply("D'accord. Aucune nouvelle demande n'est enregistrée ; vous pouvez continuer à poser des questions.")
-            if not re.fullmatch(r"[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ' -]{1,79}", text):
+            if any(char.isdigit() for char in text) or not re.fullmatch(r"[A-Za-zÀ-ÿ\u0600-\u06ff][A-Za-zÀ-ÿ\u0600-\u06ff' -]{1,79}", text):
                 return Reply("Quel nom de famille souhaitez-vous indiquer ? Évitez les chiffres et les noms de documents.")
             s.last_name = text.strip()
             s.stage = "first_name"
-            return Reply("Quel est votre prénom ?")
+            return Reply(self._t(s, "Quel est votre prénom ?", "ما هو اسمكم؟"))
         if s.stage == "first_name":
             if answer in NO:
                 s.stage = "paused" if s.primary else "idle"
                 return Reply("D'accord. Aucune nouvelle demande n'est enregistrée ; vous pouvez continuer à poser des questions.")
-            if not re.fullmatch(r"[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ' -]{1,79}", text):
+            if any(char.isdigit() for char in text) or not re.fullmatch(r"[A-Za-zÀ-ÿ\u0600-\u06ff][A-Za-zÀ-ÿ\u0600-\u06ff' -]{1,79}", text):
                 return Reply("Quel prénom souhaitez-vous indiquer ? Évitez les chiffres et les noms de documents.")
             s.first_name = text.strip()
             s.contact_method = "telephone"
             s.stage = "contact_detail"
-            return Reply("Quel numéro de téléphone souhaitez-vous utiliser ? Vous pouvez écrire directement un mobile algérien, par exemple 0550123456, ou utiliser un indicatif international comme +213…")
+            return Reply(self._t(s,
+                                 "Quel numéro de téléphone souhaitez-vous utiliser ? Vous pouvez écrire directement un mobile algérien, par exemple 0550123456, ou utiliser un indicatif international comme +213…",
+                                 "ما هو رقم الهاتف الذي تريدون استعماله؟ يمكنكم كتابة رقم جزائري مباشرة مثل 0550123456 أو رقما دوليا يبدأ بمفتاح البلد."))
         if s.stage == "contact_detail":
             phone = normalize_contact_phone(text)
             if not phone:
-                return Reply("Ce numéro ne semble pas complet. Écrivez un mobile algérien de 10 chiffres, par exemple 0550123456, ou un numéro international avec son indicatif. Vous pouvez aussi utiliser /annuler.")
+                return Reply(self._t(s,
+                                     "Ce numéro ne semble pas complet. Écrivez un mobile algérien de 10 chiffres, par exemple 0550123456, ou un numéro international avec son indicatif. Vous pouvez aussi utiliser /annuler.",
+                                     "يبدو أن الرقم غير كامل. اكتبوا رقم هاتف جزائري من 10 أرقام مثل 0550123456 أو رقما دوليا مع مفتاح البلد. يمكنكم أيضا استعمال /annuler."))
             s.contact_detail = phone
             s.stage = "contact_confirm"
-            return Reply(f"J'ai noté {phone} au format international. Est-ce correct ?", [("Confirmer", "coord:yes"), ("Corriger", "coord:no")])
+            return Reply(self._t(s, f"J'ai noté {phone} au format international. Est-ce correct ?",
+                                 f"سجلت الرقم {phone} بالصيغة الدولية. هل هو صحيح؟"),
+                         [(self._t(s, "Confirmer", "تأكيد"), "coord:yes"),
+                          (self._t(s, "Corriger", "تصحيح"), "coord:no")])
         if s.stage == "contact_confirm":
             if answer in YES:
                 s.contact_confirmed = True
                 s.stage = "consent"
-                return Reply(CONSENT_TEXT, [("J'accepte", "consent:accept"), ("Je refuse", "consent:decline")])
+                return Reply(self._consent_text(s),
+                             [(self._t(s, "J'accepte", "أوافق"), "consent:accept"),
+                              (self._t(s, "Je refuse", "أرفض"), "consent:decline")])
             s.contact_detail = None
             s.contact_confirmed = False
             s.stage = "contact_detail"
@@ -1011,6 +1311,10 @@ class ConversationService:
             s.asked = max(0, s.asked - 1)
         s.stage = "last_name"
         if s.funnel_route == "private_channel":
-            return Reply("Je vais préparer votre demande afin que l'équipe vous transmette les modalités du canal privé. Quel est votre nom de famille ?")
+            return Reply(self._t(s,
+                                 "Je vais préparer votre demande afin que l'équipe vous transmette les modalités du canal privé. Quel est votre nom de famille ?",
+                                 "سأجهز طلبكم حتى يرسل لكم الفريق طريقة الدخول إلى القناة الخاصة. ما هو لقبكم؟"))
         s.funnel_route = "consultation"
-        return Reply("Je vais préparer votre demande de consultation pour l'équipe RDW. Quel est votre nom de famille ?")
+        return Reply(self._t(s,
+                             "Je vais préparer votre demande de consultation pour l'équipe RDW. Quel est votre nom de famille ?",
+                             "سأجهز طلب الاستشارة لفريق RDW. ما هو لقبكم؟"))

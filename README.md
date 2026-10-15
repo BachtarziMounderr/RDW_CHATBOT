@@ -1,6 +1,6 @@
 # Assistant Telegram RDW
 
-Le mode `assistant` accueille en français, informe à partir du seul [corpus public actif](bot/data/public_corpus.json), puis aide à préciser un projet avant de proposer un rappel facultatif. Le corpus vient du PDF *Ta route vers l'Allemagne*, édition 2026 (43 pages, empreinte SHA-256 enregistrée dans le JSON). Chaque passage indique les pages, la section et la version. L'[ancien corpus](bot/data/archive/public_corpus_2026-10-07.json) est archivé hors de la recherche active pour permettre un retour arrière explicite.
+Le mode `assistant` accueille en français ou en arabe, informe à partir du seul [corpus public actif](bot/data/public_corpus.json), puis aide à préciser un projet avant de proposer un rappel facultatif. Le corpus vient du [PDF *Ta route vers l'Allemagne*](bot/assets/Ta-route-vers-l-Allemagne-RDW.pdf), édition 2026 (43 pages, empreinte SHA-256 enregistrée dans le JSON). Chaque passage indique les pages, la section et la version. L'[ancien corpus](bot/data/archive/public_corpus_2026-10-07.json) est archivé hors de la recherche active pour permettre un retour arrière explicite.
 
 Le PDF décrit les **études supérieures, l'Ausbildung et l'emploi**. Il ne décrit pas de prestation RDW pour le volontariat : le bot ne la propose donc pas. Il contient aussi des montants de financement et des formulations de garanties divergents. Le bot ne confirme aucune admissibilité, décision de visa, embauche, admission ou garantie contractuelle. Il présente les tarifs du *guide 2026* comme des indications à confirmer, pas comme un devis actuel. La sélection publique écarte les histoires personnelles, les noms des personnes citées, les contacts de recruteurs et les détails internes. RDW doit valider cette sélection avant une ouverture au public.
 
@@ -10,7 +10,7 @@ Le lien à placer dans le canal Telegram gratuit est :
 
 [https://t.me/RDW_assistant_bot?start=canal_gratuit](https://t.me/RDW_assistant_bot?start=canal_gratuit)
 
-Telegram demande toujours à la personne d'appuyer sur **Démarrer** avant qu'un bot puisse lui écrire. Dès cette action, le bot se présente, indique ce qu'il peut expliquer ou préparer, puis laisse la personne décrire naturellement son besoin. Le paramètre `canal_gratuit` est enregistré dans la fiche uniquement après le consentement final.
+Telegram demande toujours à la personne d'appuyer sur **Démarrer** avant qu'un bot puisse lui écrire. Dès cette action, le bot demande le français ou l'arabe, envoie le PDF original, puis affiche `📖 J'ai lu l'Ebook / Continuer`. Le bouton présente l'accompagnement Premium et laisse choisir entre l'agence et une démarche autonome. Une question posée pendant ce parcours reçoit une réponse avant la reprise de l'étape. Le paramètre `canal_gratuit` est enregistré dans la fiche uniquement après le consentement final.
 
 Le routage préparé distingue sans menu numéroté :
 
@@ -18,7 +18,7 @@ Le routage préparé distingue sans menu numéroté :
 - une personne qui cherche des informations sur RDW ou le guide : réponses fondées sur le corpus actif et commande `/guide` pour voir les sujets disponibles ;
 - une personne qui indique vouloir surtout avancer seule, ou qui enchaîne plusieurs questions pratiques sans demander l'accompagnement de l'agence : présentation naturelle du canal privé à `500 DA`, avec des informations complémentaires, des lives et un accès à vie après un paiement unique. La commande `/canal` permet de demander les modalités.
 
-Les deux prix sont configurables localement avec `CONSULTATION_PRICE_DZD` et `PRIVATE_CHANNEL_PRICE_DZD`. Aucun prestataire de paiement ni accès automatique au canal n'est encore connecté : pendant le test, l'équipe confirme manuellement les modalités, le paiement et l'accès. Le bot peut enregistrer, après consentement, une demande avec `funnel_route=private_channel` et `offer_status=private_channel_access_requested` pour le dashboard. Une capture d'écran n'est jamais considérée comme une preuve de paiement vérifiée.
+Les deux prix sont configurables localement avec `CONSULTATION_PRICE_DZD` et `PRIVATE_CHANNEL_PRICE_DZD`. Le compte qui reçoit la preuve est défini par `PAYMENT_PROOF_TELEGRAM`. Les coordonnées réelles de paiement doivent être saisies dans `BARIDIMOB_PAYMENT_DETAILS` et `CCP_PAYMENT_DETAILS` ; si elles sont vides, le bot demande au client de les obtenir auprès du compte de paiement au lieu d'en inventer. Aucun prestataire de paiement ni accès automatique au canal n'est connecté : l'administrateur confirme manuellement le paiement et ajoute la personne au canal. Une capture d'écran n'est jamais considérée par le bot comme une preuve vérifiée.
 
 ## Démarrer et arrêter
 
@@ -83,9 +83,9 @@ RDW_ADMIN_USER_IDS=7907520730,1953680558
 
 Une personne peut aussi dire « Je veux juste me renseigner sur l'agence » ou demander des informations sans point d'interrogation. Le bot répond alors depuis le corpus RDW et reste en mode information tant qu'aucun projet n'est déclaré. Pendant une qualification, une question sur l'agence, le CV, les documents ou l'accompagnement reçoit une réponse avant la reprise de l'étape en cours. Les transitions entre les champs sont rédigées naturellement par le fournisseur IA lorsqu'il est disponible ; Python conserve la validation et une formulation locale de repli.
 
-Le bot reconnaît aussi des formulations courantes en daridja algérienne, en alphabet latin, en Arabizi ou en arabe, par exemple « wach tdirou », « ch7al souma » et « nheb nqra master ». Il répond toujours en français. Lorsqu'elle passe les contrôles locaux, la question non sensible peut être transmise à Groq avec les passages publics du guide afin de comprendre les reformulations. Les coordonnées, identifiants Telegram, documents et étapes de collecte restent locaux. Ce filtrage ne rend pas le texte anonyme.
+Le bot reconnaît aussi des formulations courantes en daridja algérienne, en alphabet latin, en Arabizi ou en arabe, par exemple « wach tdirou », « ch7al souma » et « nheb nqra master ». Il répond en français ou en arabe selon le choix fait au démarrage. Lorsqu'elle passe les contrôles locaux, la question non sensible peut être transmise à Groq avec les passages publics du guide afin de comprendre les reformulations. Les coordonnées, identifiants Telegram, documents et étapes de collecte restent locaux. Ce filtrage ne rend pas le texte anonyme.
 
-Avant l'accord final, les faits du projet et les coordonnées restent uniquement en mémoire du processus, au plus deux heures après le dernier message. Après confirmation du résumé, le bot propose un contact. Si la personne accepte, il demande **nom, prénom et numéro de téléphone**, fait confirmer le numéro, présente le [texte d'accord versionné](bot/data/consent_rdw_contact_v4_2026-10-13.txt), puis enregistre dans PostgreSQL seulement après « J'accepte ». Un mobile algérien peut être saisi directement au format local, par exemple `0550123456` ; le bot le convertit en `+213550123456` avant confirmation. Les formats internationaux avec `+` ou `00` restent acceptés. La fiche contient les faits déclarés, les projets, les questions ouvertes, le résumé, le numéro confirmé, la date et la version de l'accord. Aucun dossier candidat ni campagne n'est créé et aucun commercial n'est averti automatiquement. Telegram peut conserver les messages de son côté.
+Avant l'accord final, les faits du projet et les coordonnées restent uniquement en mémoire du processus, au plus deux heures après le dernier message. Neon conserve seulement la langue et l'étape commerciale sans texte libre ni coordonnées afin de reprendre le tunnel après un redémarrage. Après confirmation du résumé, le bot propose un contact. Si la personne accepte, il demande **nom, prénom et numéro de téléphone**, fait confirmer le numéro, présente le [texte d'accord versionné](bot/data/consent_rdw_contact_v4_2026-10-13.txt), puis enregistre dans PostgreSQL seulement après « J'accepte ». Un mobile algérien peut être saisi directement au format local, par exemple `0550123456` ; le bot le convertit en `+213550123456` avant confirmation. Les formats internationaux avec `+` ou `00` restent acceptés.
 
 Pour exporter localement les demandes consenties dans un **nouveau** CSV à remettre seulement à l'équipe RDW :
 
@@ -128,7 +128,8 @@ Les nouvelles tables additives sont :
 - `knowledge_entries` pour les réponses, FAQ et vidéos validées ;
 - `review_questions` pour les questions à traiter et les candidats FAQ ;
 - `history_preferences` et `conversation_messages` pour l'historique volontaire ;
-- `payment_events` pour un futur historique issu d'un prestataire de paiement.
+- `payment_events` pour un futur historique issu d'un prestataire de paiement ;
+- `funnel_sessions` pour la langue et l'étape non personnelle du parcours.
 
 L'historique brut est désactivé par défaut. La personne peut utiliser `/historique_on` avant la conversation, `/historique_off` pour arrêter les nouvelles écritures et `/supprimer` pour supprimer sa fiche et son historique local. Cela évite de conserver silencieusement des conversations personnelles. Telegram garde ses propres messages selon ses règles.
 
@@ -144,7 +145,7 @@ Une question documentaire reçoit d'abord une réponse ; elle ne déclenche plus
 
 Groq parle au nom de l'agence avec « nous », « nos services » et « notre agence ». Après avoir répondu, il peut poser au maximum une question naturelle correspondant à l'objectif actif : approfondir une information du guide, préparer une consultation avec un conseiller commercial, ou présenter le canal privé seulement si la personne indique vouloir avancer par elle-même. Il ne présente pas ces possibilités sous forme de menu numéroté.
 
-Le bot reconnaît aussi le français algérien et des formulations courantes de daridja écrites en lettres latines, en arabe ou avec les chiffres `3`, `7` et `9`. Le message original filtré est transmis à Groq avec une indication de contexte algérien ; la réponse reste en français. Les signaux locaux servent à reconnaître le sujet ou le projet, puis Groq interprète la phrase complète. Une demande générale sur l'aide ou les services reçoit une synthèse du corpus, tandis qu'une formulation comme `n9ra f Allemagne` est rattachée au parcours études sans redemander le type de projet.
+Le bot reconnaît aussi le français algérien et des formulations courantes de daridja écrites en lettres latines, en arabe ou avec les chiffres `3`, `7` et `9`. Le message original filtré est transmis à Groq avec une indication de contexte algérien et la langue choisie ; la réponse est en français ou en arabe. Les signaux locaux servent à reconnaître le sujet ou le projet, puis Groq interprète la phrase complète.
 
 Pendant les essais, `DEBUG_SOURCE_LABELS=true` ajoute `Réponse Groq :` ou `Réponse RAG :` au début du message. Remettez cette variable à `false` avant une diffusion aux prospects.
 
@@ -164,4 +165,4 @@ Depuis PowerShell, après avoir vérifié le Free Tier et enregistré la clé lo
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-Les tests IA utilisent de faux transports : ils vérifient notamment la rédaction, la provenance, le repli, la confidentialité des requêtes, les timeouts, les réponses 429 et le JSON invalide, sans évaluer un modèle réel. Les tests PostgreSQL s'exécutent lorsque `TEST_TELEGRAM_DATABASE_URL` pointe vers une base de test dédiée. Ils créent des identifiants synthétiques négatifs et suppriment leurs fiches. Le code commercial antérieur reste dans `bot/service.py` ; son test de régression charge expressément l'ancien corpus archivé. Les migrations sont dans `bot/sql/001_telegram.sql`, `002_conversation.sql` et `003_contact_name.sql`.
+Les tests IA utilisent de faux transports : ils vérifient notamment la rédaction française et arabe, la provenance, le repli, la confidentialité des requêtes, les timeouts, les réponses 429 et le JSON invalide, sans évaluer un modèle réel. Les tests PostgreSQL s'exécutent lorsque `TEST_TELEGRAM_DATABASE_URL` pointe vers une base de test dédiée. Les migrations additives sont dans `bot/sql`.

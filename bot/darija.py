@@ -1,7 +1,7 @@
 """Reconnaissance locale et prudente de formulations courantes en daridja algérienne.
 
 Le texte libre reste local. Ce module déduit seulement une intention documentaire ou
-une voie de projet ; les réponses destinées à Telegram restent rédigées en français.
+une voie de projet ; la langue de réponse est choisie séparément par la personne.
 """
 from __future__ import annotations
 
@@ -23,13 +23,13 @@ _QUESTION_LATIN = re.compile(
     r"\b(?:wach|weche|wech|chkon|chkoun|chno|chnou|chniya|chya|kifach|kifech|"
     r"chhal|ch7al|9adech|win|3lach|ida|est-ce-que)\b"
 )
-_QUESTION_ARABIC = re.compile(r"(?:واش|وش|شكون|كيفاش|شحال|قداش|وين|علاش)")
+_QUESTION_ARABIC = re.compile(r"(?:واش|وش|شكون|كيفاش|شحال|قداش|وين|علاش|ماذا|هل|كيف|كم|متى|أين|اين|لماذا|ما هي|ما هو|أي|اي)")
 
 _STUDIES_LATIN = re.compile(r"\b(?:nqra|ne9ra|na9ra|n9ra|n9ari|9raya|qraya|universite|faculte|master|licence)\b")
-_STUDIES_ARABIC = re.compile(r"(?:نقرا|قراية|جامعة|ماستر|ليسانس)")
+_STUDIES_ARABIC = re.compile(r"(?:نقرا|قراية|دراسة|دراسات|جامعة|ماستر|ليسانس)")
 _WORK_LATIN = re.compile(r"\b(?:nkhdem|nekhdem|khedma|khadma)\b")
 _WORK_ARABIC = re.compile(r"(?:نخدم|خدمة|عمل)")
-_AUSBILDUNG = re.compile(r"\b(?:ausbildung|azubi|apprentissage|alternance)\b")
+_AUSBILDUNG = re.compile(r"\b(?:ausbildung|azubi|apprentissage|alternance)\b|(?:أوسبيلدونغ|اوسبيلدونغ)")
 
 _PRICE_LATIN = re.compile(r"\b(?:chhal|ch7al|9adech|souma|prix|tarif)\b")
 _PRICE_ARABIC = re.compile(r"(?:شحال|قداش|السعر|سومة)")
@@ -40,7 +40,7 @@ _MISSION_LATIN = re.compile(
     r"\b(?:chno|chnou|chniya|wach)\b.{0,25}\b(?:services?|t9drou|te9drou|t3awnou|3andkom)\b|"
     r"\b(?:services?|khadamat)\b.{0,20}\b(?:3andkom|ta3kom|proposez|tdirou)\b"
 )
-_MISSION_ARABIC = re.compile(r"(?:شكون\s+(?:نتوما|انتم)|واش\s+تديرو|وش\s+تديرو)")
+_MISSION_ARABIC = re.compile(r"(?:شكون\s+(?:نتوما|انتم)|واش\s+تديرو|وش\s+تديرو|ماذا\s+تقدمون|ما هي\s+خدمات|الخدمات|خدماتكم|تساعدون|تساعدني|الوكالة)")
 _PROCESS_LATIN = re.compile(
     r"\b(?:kifach|kifech)\b.{0,45}\b(?:rdw|accompagnement|dossier|processus|procedure|demarches?)\b|"
     r"\b(?:kifach|kifech)\s+(?:temchi|timchi|tsra)\b|"
@@ -50,7 +50,7 @@ _PROCESS_ARABIC = re.compile(r"كيفاش.{0,30}(?:المرافقة|الملف|�
 _DOCUMENTS_LATIN = re.compile(
     r"\b(?:wra9|wara9|papiers?|documents?|dossier|cv|traduction|traduire|tarjama|terjem[a-z]*)\b"
 )
-_DOCUMENTS_ARABIC = re.compile(r"(?:وراق|أوراق|وثائق|الملف|سيرة ذاتية)")
+_DOCUMENTS_ARABIC = re.compile(r"(?:وراق|أوراق|وثائق|الوثائق|ترجمة|الترجمة|الملف|سيرة ذاتية)")
 _LANGUAGE_LATIN = re.compile(r"\b(?:lugha|lougha|allemand|deutsch|niveau)\b")
 _LANGUAGE_ARABIC = re.compile(r"(?:لغة|ألمانية|الالمانية|المستوى)")
 _DARIJA_SIGNAL = re.compile(
