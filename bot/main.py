@@ -571,6 +571,13 @@ def main():
     if config.bot_mode == "assistant":
         store.check_schema()
         review_store = PostgresKnowledgeStore(config.database_url)
+        print(
+            "Configuration paiement chargée : "
+            f"BaridiMob={'oui' if config.baridimob_payment_details else 'non'}, "
+            f"CCP={'oui' if config.ccp_payment_details else 'non'}, "
+            f"titulaire_CCP={'oui' if config.ccp_account_holder_name else 'non'}, "
+            f"canal_VIP={'oui' if config.vip_channel_id else 'non'}."
+        )
         dashboard_server = None
         dashboard_url = (config.webhook_public_url if config.telegram_transport == "webhook" else
                          f"http://{config.dashboard_host}:{config.dashboard_port}")
