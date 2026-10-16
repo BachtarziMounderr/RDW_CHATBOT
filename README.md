@@ -18,7 +18,7 @@ Le routage distingue deux voies après l'Ebook :
 - une personne qui cherche des informations sur RDW ou le guide : réponses fondées sur le corpus actif et commande `/guide` pour voir les sujets disponibles ;
 - **Solo** : présentation du canal VIP à `1 000 DA`, paiement unique pour un accès à vie, avec lives, ressources, pratique de l'allemand, entraide et possibilité de passer ensuite au Premium. La commande `/canal` affiche cette offre.
 
-Le prix VIP est configurable avec `PRIVATE_CHANNEL_PRICE_DZD`. Les coordonnées réelles de paiement doivent être saisies dans `BARIDIMOB_PAYMENT_DETAILS` et `CCP_PAYMENT_DETAILS`, et le nom officiel du titulaire CCP dans `CCP_ACCOUNT_HOLDER_NAME` ; si les coordonnées sont vides, le bot demande au client de les obtenir auprès du support `PAYMENT_PROOF_TELEGRAM` au lieu d'en inventer. Le client envoie ensuite la photo ou le PDF du reçu directement au bot. Le reçu reste `unverified` jusqu'au clic d'un administrateur. Après validation, le bot crée un lien Telegram limité à un membre et l'envoie au client. `VIP_CHANNEL_ID` doit contenir l'identifiant du canal privé et le bot doit y être administrateur avec le droit de créer des invitations.
+Le prix VIP est configurable avec `PRIVATE_CHANNEL_PRICE_DZD`. Les coordonnées réelles de paiement doivent être saisies dans `BARIDIMOB_PAYMENT_DETAILS` et `CCP_PAYMENT_DETAILS`, et le nom officiel du titulaire CCP dans `CCP_ACCOUNT_HOLDER_NAME` ; si elles sont vides, le bot demande au client de les obtenir auprès du support au lieu d'en inventer. Après paiement, le client envoie la photo ou le PDF du reçu au compte Telegram défini par `PAYMENT_PROOF_TELEGRAM`. Un administrateur vérifie le paiement et ajoute manuellement le client au canal VIP. Le bot ne collecte plus les nouveaux reçus dans ce parcours.
 
 ## Démarrer et arrêter
 
@@ -116,8 +116,7 @@ L'interface de gestion reste dans Telegram :
 - `/contenu Question | Réponse` : ajouter une réponse documentaire ;
 - `/video Titre | https://...` : publier un lien YouTube ou Vimeo dans `/videos` ;
 - `/paiements` : afficher les nombres d'événements par statut.
-- `/valider_paiement N` : valider manuellement le reçu N et envoyer un lien VIP à usage unique ;
-- `/refuser_paiement N` : refuser le reçu N et inviter le client à renvoyer une preuve correcte.
+- `/valider_paiement N` et `/refuser_paiement N` restent disponibles pour traiter les anciens reçus déjà enregistrés.
 
 Une vidéo est publiée comme ressource. Elle ne devient une source factuelle du RAG qu'après ajout d'une transcription ou d'une réponse textuelle validée. Les commandes de gestion sont refusées aux autres comptes.
 
@@ -135,7 +134,7 @@ Les nouvelles tables additives sont :
 
 L'historique brut est désactivé par défaut. La personne peut utiliser `/historique_on` avant la conversation, `/historique_off` pour arrêter les nouvelles écritures et `/supprimer` pour supprimer sa fiche et son historique local. Cela évite de conserver silencieusement des conversations personnelles. Telegram garde ses propres messages selon ses règles.
 
-Aucun prestataire de paiement n'est connecté et le bot ne fait aucune reconnaissance automatique des captures. Il accepte une photo ou un PDF seulement à l'étape VIP, conserve la référence de fichier Telegram et la transmet aux administrateurs. Seul un administrateur autorisé peut passer le reçu à `verified`, après vérification visuelle. La contrainte d'unicité sur `(provider, external_reference)` limite les doublons. La validation déclenche un lien `createChatInviteLink` avec `member_limit=1`.
+Aucun prestataire de paiement n'est connecté et le bot ne fait aucune reconnaissance automatique des captures. Les nouveaux reçus sont envoyés au contact Telegram configuré puis vérifiés hors du bot. Les anciennes références conservées dans `payment_events` restent disponibles afin de ne perdre aucune donnée historique.
 
 ## Groq en test privé
 

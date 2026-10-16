@@ -49,7 +49,8 @@ def test_strict_funnel_reaches_premium_and_vip_payment_paths():
     payment = vip.send("vip:join", callback=True)
     assert "BaridiMob" in payment.text and "CCP" in payment.text
     assert "0541501832" in payment.text
-    assert "photo ou le PDF du reçu" in payment.text
+    assert "compte Telegram associé au numéro" in payment.text
+    assert "ajoutera manuellement" in payment.text
 
 
 def test_question_during_tunnel_is_answered_then_same_step_resumes():
@@ -88,6 +89,7 @@ def test_payment_details_are_configurable_and_never_invented():
     assert "00799999000123456789" in payment.text
     assert "12345678 clé 90" in payment.text
     assert "Titulaire du compte CCP : Prénom NOM" in payment.text
+    assert "ajoutera manuellement au canal VIP" in payment.text
 
 
 def test_ccp_holder_name_uses_arabic_label_in_arabic_conversation():

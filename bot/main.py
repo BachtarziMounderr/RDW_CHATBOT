@@ -295,7 +295,7 @@ async def dispatch(update: Update, context: ContextTypes.DEFAULT_TYPE):
         value = ""
     else:
         if update.message:
-            await update.message.reply_text("Ce type de fichier n'est pas accepté. Pour un reçu VIP, envoyez une photo ou un PDF après avoir choisi /canal.")
+            await update.message.reply_text("Ce type de fichier n'est pas accepté par le bot. Pour un reçu VIP, utilisez /canal puis envoyez la preuve au contact RDW indiqué.")
         return
     access_restricted = context.application.bot_data.get("access_restricted", False)
     if access_restricted:

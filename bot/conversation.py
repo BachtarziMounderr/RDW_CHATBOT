@@ -490,59 +490,27 @@ class ConversationService:
     def receive_payment_receipt(self, user_id: int, update_id: int, *, media_type: str,
                                 file_id: str, file_unique_id: str,
                                 source_chat_id: int, source_message_id: int) -> Reply:
-        """Enregistre la référence Telegram du reçu; aucune validation automatique."""
+        """Redirige les nouveaux reçus vers le contact RDW chargé du contrôle manuel."""
         if user_id not in self.sessions and self.review_store and hasattr(self.review_store, "load_funnel_state"):
             restored = self.review_store.load_funnel_state(user_id)
             if restored:
                 self.sessions[user_id] = Session(**restored)
         session = self.sessions.get(user_id)
-        if not session or session.stage != "vip_payment":
+        contact = self.payment_proof_telegram or "le contact RDW indiqué dans /canal"
+        if not session:
             return Reply(
-                "Je peux recevoir une preuve de paiement uniquement après le choix du canal VIP. "
-                "Utilisez /canal pour voir l'offre et les modalités."
+                f"Le bot ne collecte pas les preuves de paiement. Envoyez la photo ou le PDF du reçu "
+                f"au compte Telegram associé au numéro {contact}. Après vérification, un administrateur "
+                "vous ajoutera manuellement au canal VIP."
             )
-        if media_type not in {"photo", "pdf"} or not self.review_store or not hasattr(self.review_store, "create_payment_receipt"):
-            return Reply(self._t(session,
-                                 "Envoyez une photo nette ou un fichier PDF du reçu.",
-                                 "أرسلوا صورة واضحة أو ملف PDF للوصل."))
-        payment = self.review_store.create_payment_receipt(
-            user_id, update_id=update_id, media_type=media_type, file_id=file_id,
-            file_unique_id=file_unique_id, source_chat_id=source_chat_id,
-            source_message_id=source_message_id, amount_dzd=self.private_channel_price_dzd,
-            language=session.language or "fr",
-        )
-        if payment.get("user_id") != user_id:
-            return Reply(self._t(
-                session,
-                "Ce fichier a déjà été soumis dans une autre demande. Envoyez votre propre reçu original.",
-                "سبق إرسال هذا الملف في طلب آخر. أرسلوا الوصل الأصلي الخاص بكم.",
-            ))
-        if payment.get("status") == "verified":
-            suffix = f"\n{payment['invite_link']}" if payment.get("invite_link") else ""
-            return Reply(self._t(
-                session,
-                "Ce reçu a déjà été validé. Votre lien VIP est déjà disponible :",
-                "تم تأكيد هذا الوصل من قبل. رابط VIP متاح لديكم:",
-            ) + suffix)
-        if payment.get("status") == "rejected":
-            return Reply(self._t(
-                session,
-                "Ce reçu a déjà été refusé. Envoyez une nouvelle photo ou un nouveau PDF après avoir vérifié le montant et le bénéficiaire.",
-                "تم رفض هذا الوصل من قبل. أرسلوا صورة أو ملف PDF جديدا بعد التحقق من المبلغ والمستفيد.",
-            ))
-        session.offer_status = "payment_pending"
-        if hasattr(self.review_store, "save_funnel_state"):
-            self.review_store.save_funnel_state(user_id, {
-                "language": session.language, "stage": session.stage,
-                "lead_source": session.lead_source, "funnel_route": "private_channel",
-                "offer_status": session.offer_status,
-                "private_channel_presented": True,
-            })
         return Reply(self._t(
             session,
-            f"Reçu #{payment['id']} bien reçu. Il a été placé en attente de vérification par l'équipe RDW. Dès qu'un administrateur le valide, le bot vous enverra ici votre lien personnel d'accès au canal VIP.",
-            f"تم استلام الوصل رقم {payment['id']}. هو الآن في انتظار تحقق فريق RDW. بعد موافقة المسؤول، يرسل لكم البوت هنا رابطكم الشخصي للدخول إلى قناة VIP.",
-        ), payment_id=payment["id"])
+            f"Le bot ne collecte pas les preuves de paiement. Envoyez la photo ou le PDF du reçu "
+            f"au compte Telegram associé au numéro {contact}. Après vérification, un administrateur "
+            "vous ajoutera manuellement au canal VIP.",
+            f"لا يجمع البوت وصولات الدفع. أرسلوا صورة الوصل أو ملف PDF إلى حساب Telegram المرتبط بالرقم "
+            f"{contact}. بعد التحقق، سيضيفكم المسؤول يدويا إلى قناة VIP.",
+        ))
 
     def _with_source_label(self, reply: Reply | None, source: str) -> Reply | None:
         if not reply or not self.debug_source_labels:
@@ -661,7 +629,7 @@ class ConversationService:
             self.sessions[user_id] = Session(updated_at=now, lead_source=source, stage="language_choice")
             return Reply(self._language_welcome(), [("🇫🇷 Français", "lang:fr"), ("🇩🇿 العربية", "lang:ar")])
         if command == "/aide":
-            return Reply("Décrivez naturellement votre projet ou posez une question sur RDW. /guide présente les sujets du guide ; /faq affiche les réponses fréquentes ; /canal présente le canal VIP à 1 000 DA à vie. /reprendre reprend un échange ; /annuler le met en pause ; /humain prépare une demande Premium ; /mes_donnees montre la fiche enregistrée ; /supprimer l'efface ; /source indique le passage utilisé. N'envoyez un reçu qu'après avoir choisi le canal VIP.")
+            return Reply("Décrivez naturellement votre projet ou posez une question sur RDW. /guide présente les sujets du guide ; /faq affiche les réponses fréquentes ; /canal présente le canal VIP à 1 000 DA à vie. /reprendre reprend un échange ; /annuler le met en pause ; /humain prépare une demande Premium ; /mes_donnees montre la fiche enregistrée ; /supprimer l'efface ; /source indique le passage utilisé. La preuve de paiement doit être envoyée au contact indiqué dans /canal.")
         if command == "/guide":
             return Reply(self.knowledge.guide_overview())
         if command == "/faq":
@@ -1149,9 +1117,9 @@ class ConversationService:
         return self._t(
             s,
             (f"L'accès VIP coûte {price} DA, en paiement unique pour un accès à vie.\n\n{details_fr}\n\n"
-             f"Après le versement de {price} DA, envoyez ici la photo ou le PDF du reçu. Le bot le transmettra aux administrateurs sans le valider automatiquement. Après vérification, vous recevrez un lien personnel utilisable une seule fois pour rejoindre le canal VIP."),
+             f"Après le versement de {price} DA, envoyez la photo ou le PDF du reçu au compte Telegram associé au numéro {self.payment_proof_telegram}. Après vérification du paiement, un administrateur RDW vous ajoutera manuellement au canal VIP."),
             (f"سعر الدخول إلى قناة VIP هو {price} دج، بدفع واحد ودخول مدى الحياة.\n\n{details_ar}\n\n"
-             f"بعد دفع {price} دج، أرسلوا هنا صورة الوصل أو ملف PDF. سيرسله البوت إلى المسؤولين دون تأكيد آلي. بعد التحقق، يصلكم رابط شخصي يستعمل مرة واحدة للانضمام إلى قناة VIP."),
+             f"بعد دفع {price} دج، أرسلوا صورة الوصل أو ملف PDF إلى حساب Telegram المرتبط بالرقم {self.payment_proof_telegram}. بعد التحقق من الدفع، سيضيفكم مسؤول RDW يدويا إلى قناة VIP."),
         )
 
     def _consent_text(self, s: Session) -> str:

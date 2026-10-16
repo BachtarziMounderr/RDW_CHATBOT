@@ -72,7 +72,7 @@ Render demandera ces cinq valeurs :
 | `CCP_ACCOUNT_HOLDER_NAME` | nom complet officiel du titulaire du compte CCP |
 | `VIP_CHANNEL_ID` | identifiant du canal privé, par exemple `-1001234567890` |
 
-`PAYMENT_PROOF_TELEGRAM=0541501832` reste le contact de support. Les deux coordonnées de paiement peuvent rester vides tant que RDW ne les a pas confirmées ; le bot orientera alors le client vers ce contact sans inventer de numéro. Pour l'accès automatique après contrôle, créez le canal VIP, ajoutez `@RDW_assistant_bot` comme administrateur avec le droit d'inviter, puis copiez son identifiant dans `VIP_CHANNEL_ID`.
+`PAYMENT_PROOF_TELEGRAM=0541501832` est le compte Telegram auquel le client envoie sa preuve. Après vérification, un administrateur ajoute manuellement le client au canal VIP. Les coordonnées de paiement peuvent rester vides tant que RDW ne les a pas confirmées ; le bot orientera alors le client vers ce contact sans inventer de numéro. `VIP_CHANNEL_ID` est conservé uniquement pour le traitement éventuel des anciens reçus déjà enregistrés.
 
 Générez localement les deux valeurs aléatoires avec :
 

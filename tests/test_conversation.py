@@ -101,7 +101,8 @@ def test_sales_funnel_routes_consultation_information_and_self_guided_intents():
     assert "1 000 DA" in answer and "valable à vie" in answer
     assert independent.bot.sessions[7].stage == "private_channel_offer"
     follow_up = independent.say("oui")
-    assert "1 000 DA" in follow_up and "photo ou le PDF" in follow_up
+    assert "1 000 DA" in follow_up and "0541501832" in follow_up
+    assert "ajoutera manuellement" in follow_up
     assert independent.bot.sessions[7].stage == "vip_payment"
     assert independent.store.rows == {}
 
@@ -111,12 +112,12 @@ def test_private_channel_command_explains_lives_then_preserves_channel_route_for
     offer = d.say("/canal")
     assert all(item in offer for item in ("1 000 DA", "valable à vie", "lives"))
     assert d.bot.sessions[7].stage == "private_channel_offer"
-    assert "photo ou le PDF du reçu" in d.say("oui")
+    assert "0541501832" in d.say("oui")
     assert d.bot.sessions[7].stage == "vip_payment"
     assert d.bot.sessions[7].funnel_route == "private_channel"
 
 
-def test_private_channel_receipt_is_saved_pending_manual_review():
+def test_private_channel_receipt_is_redirected_to_manual_contact_without_storage():
     from bot.knowledge_store import MemoryKnowledgeStore
 
     knowledge = MemoryKnowledgeStore()
@@ -127,10 +128,10 @@ def test_private_channel_receipt_is_saved_pending_manual_review():
         7, 99, media_type="photo", file_id="file-id", file_unique_id="unique-id",
         source_chat_id=7, source_message_id=77,
     )
-    assert "attente de vérification" in reply.text
-    assert reply.payment_id == 1
-    assert knowledge.payments[0]["status"] == "unverified"
-    assert knowledge.payments[0]["amount_dzd"] == 1000
+    assert "0541501832" in reply.text
+    assert "ajoutera manuellement" in reply.text
+    assert reply.payment_id is None
+    assert knowledge.payments == []
 
 
 def test_general_procedure_question_is_answered_without_forcing_a_sales_choice():
