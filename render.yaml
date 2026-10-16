@@ -42,6 +42,8 @@ services:
         sync: false
       - key: CCP_PAYMENT_DETAILS
         sync: false
+      - key: CCP_ACCOUNT_HOLDER_NAME
+        sync: false
       - key: VIP_CHANNEL_ID
         sync: false
       - key: DEBUG_SOURCE_LABELS

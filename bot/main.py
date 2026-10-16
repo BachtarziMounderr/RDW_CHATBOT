@@ -586,6 +586,7 @@ def main():
                                       payment_proof_telegram=config.payment_proof_telegram,
                                       baridimob_payment_details=config.baridimob_payment_details,
                                       ccp_payment_details=config.ccp_payment_details,
+                                      ccp_account_holder_name=config.ccp_account_holder_name,
                                       debug_source_labels=config.debug_source_labels)
         app = build_application(config.token, service, assistant_mode=True,
                                 allowed_user_ids=config.allowed_user_ids,

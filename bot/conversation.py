@@ -307,6 +307,7 @@ class ConversationService:
                  private_channel_price_dzd: int = 1000,
                  payment_proof_telegram: str = "0541501832",
                  baridimob_payment_details: str = "", ccp_payment_details: str = "",
+                 ccp_account_holder_name: str = "",
                  debug_source_labels: bool = False):
         self.store = store
         self.corpus = corpus or Corpus()
@@ -319,6 +320,7 @@ class ConversationService:
         self.payment_proof_telegram = payment_proof_telegram
         self.baridimob_payment_details = baridimob_payment_details
         self.ccp_payment_details = ccp_payment_details
+        self.ccp_account_holder_name = ccp_account_holder_name
         self.debug_source_labels = debug_source_labels
         self.clock = clock or (lambda: datetime.now(timezone.utc))
         self.sessions: dict[int, Session] = {}
@@ -1126,13 +1128,19 @@ class ConversationService:
     def _payment_instructions(self, s: Session) -> str:
         price = f"{self.private_channel_price_dzd:,}".replace(",", " ")
         if self.baridimob_payment_details or self.ccp_payment_details:
-            methods = []
+            methods_fr = []
+            methods_ar = []
             if self.baridimob_payment_details:
-                methods.append(f"BaridiMob : {self.baridimob_payment_details}")
+                methods_fr.append(f"BaridiMob : {self.baridimob_payment_details}")
+                methods_ar.append(f"BaridiMob : {self.baridimob_payment_details}")
             if self.ccp_payment_details:
-                methods.append(f"CCP : {self.ccp_payment_details}")
-            details_fr = "\n".join(methods)
-            details_ar = details_fr
+                methods_fr.append(f"CCP : {self.ccp_payment_details}")
+                methods_ar.append(f"CCP : {self.ccp_payment_details}")
+                if self.ccp_account_holder_name:
+                    methods_fr.append(f"Titulaire du compte CCP : {self.ccp_account_holder_name}")
+                    methods_ar.append(f"اسم صاحب حساب CCP : {self.ccp_account_holder_name}")
+            details_fr = "\n".join(methods_fr)
+            details_ar = "\n".join(methods_ar)
         else:
             details_fr = ("Les coordonnées BaridiMob/CCP ne sont pas encore configurées dans le bot. "
                           f"Demandez-les au support RDW : {self.payment_proof_telegram}.")

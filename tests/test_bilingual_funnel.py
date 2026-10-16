@@ -78,7 +78,8 @@ def test_arabic_choice_changes_tunnel_and_documentary_answer_language():
 
 def test_payment_details_are_configurable_and_never_invented():
     d = Dialog(baridimob_payment_details="00799999000123456789",
-               ccp_payment_details="12345678 clé 90")
+               ccp_payment_details="12345678 clé 90",
+               ccp_account_holder_name="Prénom NOM")
     d.send("/start")
     d.send("lang:fr", callback=True)
     d.send("ebook:continue", callback=True)
@@ -86,6 +87,18 @@ def test_payment_details_are_configurable_and_never_invented():
     payment = d.send("vip:join", callback=True)
     assert "00799999000123456789" in payment.text
     assert "12345678 clé 90" in payment.text
+    assert "Titulaire du compte CCP : Prénom NOM" in payment.text
+
+
+def test_ccp_holder_name_uses_arabic_label_in_arabic_conversation():
+    d = Dialog(ccp_payment_details="12345678 clé 90",
+               ccp_account_holder_name="Prénom NOM")
+    d.send("/start")
+    d.send("lang:ar", callback=True)
+    d.send("ebook:continue", callback=True)
+    d.send("funnel:self", callback=True)
+    payment = d.send("vip:join", callback=True)
+    assert "اسم صاحب حساب CCP : Prénom NOM" in payment.text
 
 
 def test_non_personal_funnel_stage_survives_a_service_restart():

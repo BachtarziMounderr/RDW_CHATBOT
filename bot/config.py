@@ -35,6 +35,7 @@ class Config:
     payment_proof_telegram: str
     baridimob_payment_details: str
     ccp_payment_details: str
+    ccp_account_holder_name: str
     vip_channel_id: str
     debug_source_labels: bool
     telegram_transport: str
@@ -140,6 +141,7 @@ def load_config() -> Config:
         payment_proof_telegram=os.getenv("PAYMENT_PROOF_TELEGRAM", "0541501832").strip(),
         baridimob_payment_details=os.getenv("BARIDIMOB_PAYMENT_DETAILS", "").strip(),
         ccp_payment_details=os.getenv("CCP_PAYMENT_DETAILS", "").strip(),
+        ccp_account_holder_name=os.getenv("CCP_ACCOUNT_HOLDER_NAME", "").strip(),
         vip_channel_id=os.getenv("VIP_CHANNEL_ID", "").strip(),
         debug_source_labels=os.getenv("DEBUG_SOURCE_LABELS", "false").strip().lower() == "true",
         telegram_transport=telegram_transport,
