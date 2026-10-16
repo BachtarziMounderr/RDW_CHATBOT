@@ -7,7 +7,8 @@ from .knowledge_store import valid_answer, valid_video_url
 
 
 ADMIN_COMMANDS = {"/admin", "/attente", "/faq_candidats", "/repondre", "/contenu",
-                  "/faq_ajouter", "/video", "/paiements"}
+                  "/faq_ajouter", "/video", "/paiements", "/valider_paiement",
+                  "/refuser_paiement"}
 
 
 class AdminService:
@@ -20,7 +21,8 @@ class AdminService:
         if command == "/admin":
             return ("Gestion RDW : /attente, /repondre N réponse, /faq_candidats, "
                     "/faq_ajouter Question | Réponse, /contenu Question | Réponse, "
-                    "/video Titre | https://..., /paiements. Les réponses publiées sont des faits validés par vous.")
+                    "/video Titre | https://..., /paiements, /valider_paiement N, "
+                    "/refuser_paiement N. Les réponses publiées sont des faits validés par vous.")
         if command in {"/attente", "/faq_candidats"}:
             category = "needs_answer" if command == "/attente" else "faq_candidate"
             rows = self.store.list_questions(category, 10)

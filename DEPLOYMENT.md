@@ -69,8 +69,9 @@ Render demandera ces cinq valeurs :
 | `DASHBOARD_PASSWORD` | mot de passe aléatoire d'au moins 16 caractères |
 | `BARIDIMOB_PAYMENT_DETAILS` | coordonnées BaridiMob exactes fournies par RDW |
 | `CCP_PAYMENT_DETAILS` | coordonnées CCP exactes fournies par RDW |
+| `VIP_CHANNEL_ID` | identifiant du canal privé, par exemple `-1001234567890` |
 
-`PAYMENT_PROOF_TELEGRAM=0541501832` est une valeur publique du Blueprint. Les deux coordonnées de paiement peuvent rester vides tant que RDW ne les a pas confirmées ; le bot orientera alors le client vers ce compte sans inventer de numéro.
+`PAYMENT_PROOF_TELEGRAM=0541501832` reste le contact de support. Les deux coordonnées de paiement peuvent rester vides tant que RDW ne les a pas confirmées ; le bot orientera alors le client vers ce contact sans inventer de numéro. Pour l'accès automatique après contrôle, créez le canal VIP, ajoutez `@RDW_assistant_bot` comme administrateur avec le droit d'inviter, puis copiez son identifiant dans `VIP_CHANNEL_ID`.
 
 Générez localement les deux valeurs aléatoires avec :
 

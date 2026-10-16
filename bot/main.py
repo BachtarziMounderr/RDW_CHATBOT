@@ -10,6 +10,7 @@ import json
 import logging
 import os
 from pathlib import Path
+import re
 import threading
 import time
 
@@ -166,18 +167,135 @@ async def flush_review_notifications(application: Application):
             return
 
 
+async def flush_lead_notifications(application: Application):
+    store = application.bot_data.get("lead_store")
+    admins = application.bot_data.get("admin_user_ids", frozenset())
+    if not store or not admins or not hasattr(store, "pending_admin_notifications"):
+        return
+    try:
+        pending = await asyncio.to_thread(store.pending_admin_notifications, 5)
+        for item in pending:
+            profile = item.get("profile") if isinstance(item.get("profile"), dict) else {}
+            facts = profile.get("facts") if isinstance(profile.get("facts"), dict) else {}
+            details = ", ".join(
+                f"{key}={value.get('value')}" for key, value in facts.items()
+                if isinstance(value, dict) and value.get("status") == "declared"
+            )
+            message = (
+                "Nouvelle demande Premium confirmée\n"
+                f"Nom : {item.get('last_name') or '-'}\nPrénom : {item.get('first_name') or '-'}\n"
+                f"Téléphone : {item.get('phone') or '-'}\nProjet : {item.get('summary') or '-'}\n"
+                f"Profil : {details or '-'}"
+            )
+            for admin_id in admins:
+                await application.bot.send_message(admin_id, message[:3900])
+            await asyncio.to_thread(store.mark_admin_notified, item["user_id"])
+    except Exception:
+        LOG.error("Notification de demande Premium non remise")
+
+
+async def flush_payment_notifications(application: Application):
+    store = application.bot_data.get("review_store")
+    admins = application.bot_data.get("admin_user_ids", frozenset())
+    if not store or not admins or not hasattr(store, "pending_payment_receipts"):
+        return
+    try:
+        pending = await asyncio.to_thread(store.pending_payment_receipts, 5)
+        for item in pending:
+            buttons = keyboard([
+                ("✅ Valider le paiement", f"payment:approve:{item['id']}"),
+                ("❌ Refuser", f"payment:reject:{item['id']}"),
+            ])
+            caption = (f"Reçu VIP #{item['id']} — {item['amount_dzd']} DA\n"
+                       f"Client Telegram : {item['user_id']}\n"
+                       "Vérifiez visuellement le montant et le bénéficiaire avant de valider.")
+            for admin_id in admins:
+                await application.bot.copy_message(
+                    chat_id=admin_id,
+                    from_chat_id=item["source_chat_id"],
+                    message_id=item["source_message_id"],
+                    caption=caption,
+                    reply_markup=buttons,
+                )
+            await asyncio.to_thread(store.mark_payment_notified, item["id"])
+    except Exception:
+        LOG.error("Notification de reçu non remise")
+
+
+def _payment_media(message):
+    if message.photo:
+        photo = message.photo[-1]
+        return "photo", photo.file_id, photo.file_unique_id
+    document = message.document
+    if document and (document.mime_type == "application/pdf" or (document.mime_type or "").startswith("image/")):
+        return "pdf" if document.mime_type == "application/pdf" else "photo", document.file_id, document.file_unique_id
+    return None
+
+
+async def review_payment(application: Application, admin_id: int, payment_id: int, approve: bool) -> str:
+    store = application.bot_data.get("review_store")
+    if not store or not hasattr(store, "get_payment"):
+        return "Gestion des paiements indisponible."
+    payment = await asyncio.to_thread(store.get_payment, payment_id)
+    if not payment:
+        return f"Reçu #{payment_id} introuvable."
+    if payment["status"] != "unverified":
+        return f"Reçu #{payment_id} déjà traité : {payment['status']}."
+    if not approve:
+        reviewed = await asyncio.to_thread(store.review_payment, payment_id, admin_id, "rejected")
+        if not reviewed:
+            return f"Reçu #{payment_id} déjà traité."
+        await application.bot.send_message(
+            payment["user_id"],
+            f"Le reçu #{payment_id} n'a pas été validé. Vérifiez le montant et le bénéficiaire, puis envoyez une nouvelle preuve lisible dans cette conversation.",
+        )
+        return f"Reçu #{payment_id} refusé. Le client a été informé."
+    channel_id = str(application.bot_data.get("vip_channel_id") or "").strip()
+    if not channel_id:
+        return "VIP_CHANNEL_ID n'est pas configuré sur Render. Le reçu reste en attente."
+    try:
+        telegram_channel = int(channel_id) if channel_id.lstrip("-").isdigit() else channel_id
+        invite = await application.bot.create_chat_invite_link(
+            chat_id=telegram_channel,
+            member_limit=1,
+            name=f"RDW VIP reçu {payment_id}",
+        )
+    except Exception:
+        LOG.error("Création du lien VIP impossible")
+        return ("Impossible de créer le lien VIP. Vérifiez VIP_CHANNEL_ID et que le bot est administrateur "
+                "du canal avec le droit d'inviter. Le reçu reste en attente.")
+    reviewed = await asyncio.to_thread(
+        store.review_payment, payment_id, admin_id, "verified", invite.invite_link,
+    )
+    if not reviewed:
+        return f"Reçu #{payment_id} déjà traité."
+    try:
+        await application.bot.send_message(
+            payment["user_id"],
+            "Votre paiement VIP a été validé. Voici votre lien personnel, utilisable une seule fois :\n"
+            + invite.invite_link,
+        )
+    except Exception:
+        return (f"Reçu #{payment_id} validé et lien créé, mais Telegram n'a pas pu le remettre au client. "
+                "Le lien reste enregistré dans la base.")
+    return f"Reçu #{payment_id} validé. Le lien unique a été envoyé au client."
+
+
 async def dispatch(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.effective_user or not update.effective_chat or update.effective_chat.type != "private":
         return
     callback = update.callback_query
+    media = None
     if callback:
         await callback.answer()
         value = callback.data if isinstance(callback.data, str) else ""
     elif update.message and update.message.text:
         value = normalize_telegram_command(update.message.text)
+    elif update.message and (media := _payment_media(update.message)):
+        value = ""
     else:
         if update.message:
-            await update.message.reply_text("Seuls les messages texte sont acceptés. Une capture d'écran ne prouve pas qu'un paiement est reçu ; aucune validation de paiement n'est faite ici.")
+            await update.message.reply_text("Ce type de fichier n'est pas accepté. Pour un reçu VIP, envoyez une photo ou un PDF après avoir choisi /canal.")
         return
     access_restricted = context.application.bot_data.get("access_restricted", False)
     if access_restricted:
@@ -189,14 +307,51 @@ async def dispatch(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
     service = context.application.bot_data["service"]
     command = value.strip().split(maxsplit=1)[0].lower() if value.strip() else ""
+    if callback and value.startswith("payment:"):
+        admins = context.application.bot_data.get("admin_user_ids", frozenset())
+        if update.effective_user.id not in admins:
+            await context.bot.send_message(update.effective_chat.id, "Action réservée à l'administrateur RDW.")
+            return
+        match = re.fullmatch(r"payment:(approve|reject):(\d+)", value)
+        if not match:
+            await context.bot.send_message(update.effective_chat.id, "Action de paiement invalide.")
+            return
+        answer = await review_payment(context.application, update.effective_user.id,
+                                      int(match.group(2)), match.group(1) == "approve")
+        await context.bot.send_message(update.effective_chat.id, answer)
+        return
+    if media:
+        try:
+            reply = await asyncio.to_thread(
+                service.receive_payment_receipt,
+                update.effective_user.id,
+                update.update_id,
+                media_type=media[0], file_id=media[1], file_unique_id=media[2],
+                source_chat_id=update.effective_chat.id,
+                source_message_id=update.message.message_id,
+            )
+        except Exception:
+            LOG.error("Réception du reçu indisponible")
+            await context.bot.send_message(update.effective_chat.id, "Le reçu n'a pas pu être enregistré. Réessayez plus tard.")
+            return
+        await context.bot.send_message(update.effective_chat.id, reply.text)
+        await flush_payment_notifications(context.application)
+        return
     if command in ADMIN_COMMANDS:
         admins = context.application.bot_data.get("admin_user_ids", frozenset())
         if update.effective_user.id not in admins:
             await context.bot.send_message(update.effective_chat.id, "Commande réservée à l'administrateur RDW.")
             return
         try:
-            answer = await asyncio.to_thread(context.application.bot_data["admin_service"].handle,
-                                             update.effective_user.id, value)
+            payment_command = re.fullmatch(r"/(valider_paiement|refuser_paiement)\s+(\d+)", value, re.I)
+            if payment_command:
+                answer = await review_payment(
+                    context.application, update.effective_user.id, int(payment_command.group(2)),
+                    payment_command.group(1).lower() == "valider_paiement",
+                )
+            else:
+                answer = await asyncio.to_thread(context.application.bot_data["admin_service"].handle,
+                                                 update.effective_user.id, value)
         except Exception:
             LOG.error("Gestion RDW indisponible")
             answer = "Gestion indisponible. Réessayez plus tard."
@@ -240,6 +395,8 @@ async def dispatch(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if access_restricted:
             record_exchange("id" if command == "/id" else "authorized")
         await flush_review_notifications(context.application)
+        await flush_lead_notifications(context.application)
+        await flush_payment_notifications(context.application)
 
 
 async def on_error(_update: object, context: ContextTypes.DEFAULT_TYPE):
@@ -257,7 +414,8 @@ def build_application(token: str, service, *, private_mode: bool = False, assist
                       allowed_user_ids: frozenset[int] = frozenset(),
                       ai_enabled: bool = False, ai_provider: str | None = None, ai_model: str | None = None,
                       review_store=None, admin_user_ids: frozenset[int] = frozenset(),
-                      restrict_access: bool | None = None, dashboard_url: str | None = None) -> Application:
+                      restrict_access: bool | None = None, dashboard_url: str | None = None,
+                      lead_store=None, vip_channel_id: str = "") -> Application:
     access_restricted = private_mode if restrict_access is None else restrict_access
 
     async def verify_bot(application: Application):
@@ -280,18 +438,23 @@ def build_application(token: str, service, *, private_mode: bool = False, assist
             watch_stop_request(application)
         if assistant_mode:
             await flush_review_notifications(application)
+            await flush_lead_notifications(application)
+            await flush_payment_notifications(application)
 
     app = Application.builder().token(token).post_init(verify_bot).concurrent_updates(False).build()
     app.bot_data["service"] = service
     app.bot_data["access_restricted"] = access_restricted
     app.bot_data["allowed_user_ids"] = allowed_user_ids
     app.bot_data["review_store"] = review_store
+    app.bot_data["lead_store"] = lead_store
     app.bot_data["admin_user_ids"] = admin_user_ids
+    app.bot_data["vip_channel_id"] = vip_channel_id
     if review_store:
         app.bot_data["admin_service"] = AdminService(review_store)
     names = ("start", "aide", "id", "fiche", "humain", "annuler", "reprendre", "source", "guide",
              "mes_donnees", "supprimer", "faq", "videos", "historique", "historique_on", "historique_off",
              "admin", "attente", "faq_candidats", "repondre", "contenu", "faq_ajouter", "video", "paiements")
+    names += ("valider_paiement", "refuser_paiement")
     for name in names:
         app.add_handler(CommandHandler(name, dispatch))
     app.add_handler(CallbackQueryHandler(dispatch))
@@ -419,7 +582,6 @@ def main():
                 parser.error(str(exc))
         service = ConversationService(store, composer=composer, review_store=review_store,
                                       admin_user_ids=config.admin_user_ids,
-                                      consultation_price_dzd=config.consultation_price_dzd,
                                       private_channel_price_dzd=config.private_channel_price_dzd,
                                       payment_proof_telegram=config.payment_proof_telegram,
                                       baridimob_payment_details=config.baridimob_payment_details,
@@ -431,7 +593,8 @@ def main():
                                 ai_model=selected_ai_model(config),
                                 review_store=review_store, admin_user_ids=config.admin_user_ids,
                                 restrict_access=config.telegram_access_mode == "private",
-                                dashboard_url=dashboard_url)
+                                dashboard_url=dashboard_url, lead_store=store,
+                                vip_channel_id=config.vip_channel_id)
         if config.telegram_transport == "webhook":
             if not config.dashboard_enabled:
                 parser.error("DASHBOARD_ENABLED=true est requis : le serveur HTTP reçoit aussi le webhook Telegram.")

@@ -9,11 +9,12 @@ from bot.llm import Interpretation, validate_interpretation
 
 
 class Dialog:
-    def __init__(self, interpreter=None):
+    def __init__(self, interpreter=None, **kwargs):
         self.store = MemoryLeadStore()
         self.bot = ConversationService(
             self.store, interpreter=interpreter,
             clock=lambda: datetime(2026, 10, 8, tzinfo=timezone.utc),
+            **kwargs,
         )
         self.update = 0
 
@@ -29,9 +30,22 @@ def consent_by_phone(d, name="Martin", first="Alice", phone="+33 6 12 34 56 78")
     assert "indicatif international" in d.say(first)
     assert "Est-ce correct" in d.say(phone)
     consent = d.say("oui")
-    assert "enregistrera" in consent and "équipe RDW" in consent
+    assert "enregistrera" in consent and "équipe commerciale" in consent
     assert d.store.rows == {}
     return d.say("j'accepte")
+
+
+def reach_premium_phone(d, track="etudes"):
+    assert "projet préparez-vous" in d.say("/humain")
+    assert "nom de famille" in d.say(f"project:{track}", callback=True)
+    assert "prénom" in d.say("Martin")
+    assert "âge" in d.say("Alice")
+    assert "diplôme" in d.say("28")
+    assert "domaine" in d.say("Master informatique")
+    assert "allemand" in d.say("Intelligence artificielle")
+    assert "anglais" in d.say("B1")
+    assert "expérience" in d.say("B2")
+    assert "numéro" in d.say("3 ans comme développeuse")
 
 
 @pytest.mark.parametrize("value,expected", [
@@ -84,39 +98,39 @@ def test_sales_funnel_routes_consultation_information_and_self_guided_intents():
 
     independent = Dialog()
     answer = independent.say("Je veux comprendre les démarches et avancer seul")
-    assert "500 DA" in answer and "accès à vie" in answer
+    assert "1 000 DA" in answer and "valable à vie" in answer
     assert independent.bot.sessions[7].stage == "private_channel_offer"
     follow_up = independent.say("oui")
-    assert "500 DA" in follow_up and "conseiller commercial" in follow_up
-    assert independent.bot.sessions[7].stage == "offer_contact"
+    assert "1 000 DA" in follow_up and "photo ou le PDF" in follow_up
+    assert independent.bot.sessions[7].stage == "vip_payment"
     assert independent.store.rows == {}
 
 
 def test_private_channel_command_explains_lives_then_preserves_channel_route_for_contact():
     d = Dialog()
     offer = d.say("/canal")
-    assert all(item in offer for item in ("500 DA", "accès à vie", "lives", "paiement unique"))
+    assert all(item in offer for item in ("1 000 DA", "valable à vie", "lives"))
     assert d.bot.sessions[7].stage == "private_channel_offer"
-    assert "conseiller commercial" in d.say("oui")
-    assert "nom de famille" in d.say("oui")
+    assert "photo ou le PDF du reçu" in d.say("oui")
+    assert d.bot.sessions[7].stage == "vip_payment"
     assert d.bot.sessions[7].funnel_route == "private_channel"
 
 
-def test_private_channel_interest_is_saved_for_dashboard_after_consent():
-    d = Dialog()
+def test_private_channel_receipt_is_saved_pending_manual_review():
+    from bot.knowledge_store import MemoryKnowledgeStore
+
+    knowledge = MemoryKnowledgeStore()
+    d = Dialog(review_store=knowledge)
     d.say("/canal")
     d.say("oui")
-    assert "nom de famille" in d.say("oui")
-    assert "prénom" in d.say("Martin")
-    assert "indicatif international" in d.say("Alice")
-    assert "Est-ce correct" in d.say("+213555123456")
-    assert "enregistrera" in d.say("oui")
-    saved = d.say("j'accepte")
-
-    assert "demande d'accès au canal privé" in saved
-    row = d.store.rows[7]
-    assert row["profile"]["funnel_route"] == "private_channel"
-    assert row["profile"]["offer_status"] == "private_channel_access_requested"
+    reply = d.bot.receive_payment_receipt(
+        7, 99, media_type="photo", file_id="file-id", file_unique_id="unique-id",
+        source_chat_id=7, source_message_id=77,
+    )
+    assert "attente de vérification" in reply.text
+    assert reply.payment_id == 1
+    assert knowledge.payments[0]["status"] == "unverified"
+    assert knowledge.payments[0]["amount_dzd"] == 1000
 
 
 def test_general_procedure_question_is_answered_without_forcing_a_sales_choice():
@@ -125,7 +139,7 @@ def test_general_procedure_question_is_answered_without_forcing_a_sales_choice()
     assert "RDW" in answer
     assert "documents" in answer and "candidatures" in answer
     assert d.bot.sessions[7].stage == "idle"
-    assert "500 DA" in d.say("Je veux avancer par moi-même")
+    assert "1 000 DA" in d.say("Je veux avancer par moi-même")
 
 
 def test_guide_overview_lists_documented_topics_without_inventing():
@@ -180,7 +194,7 @@ def test_information_request_without_question_mark_does_not_force_qualification(
 @pytest.mark.parametrize("message,expected", [
     ("wach tdirou exactement ?", "RDW accompagne"),
     ("nheb ghir nestafser 3la l'agence", "Que souhaitez-vous savoir sur RDW"),
-    ("ch7al souma ta3 consultation ?", "2 000 DA"),
+    ("ch7al souma ta3 consultation ?", "Aucun paiement"),
     ("kifach t9drou t3awnouni bach nro7 l allemagne", "RDW accompagne"),
     ("rani hab nefhem kifach temchi la procedure", "accompagnement"),
     ("nheb na3ref ida t3awnou fel traduction ta3 wra9", "traduction"),
@@ -226,10 +240,10 @@ def test_studies_long_message_contact_consent_and_delete():
     assert "rentrée" in d.say("B1")
     assert "pays" in d.say("septembre 2027")
     assert "bien compris" in d.say("France")
-    assert "2 000 DA" in d.say("oui")
+    assert "Aucun paiement" in d.say("oui")
     saved = consent_by_phone(d)
-    assert "demande de consultation est enregistrée" in saved
-    assert "Aucun paiement n'est validé" in saved and "confirmer un créneau" in saved
+    assert "formulaire Premium est enregistré" in saved
+    assert "Aucun créneau ni résultat" in saved
     row = d.store.rows[7]
     assert row["last_name"] == "Martin" and row["first_name"] == "Alice"
     assert row["contact_method"] == "telephone"
@@ -256,9 +270,9 @@ def test_other_pdf_paths_reach_confirmed_contact(project, replies, expected_trac
     for reply in replies:
         last = d.say(reply)
     assert "bien compris" in last
-    assert "2 000 DA" in d.say("oui")
+    assert "Aucun paiement" in d.say("oui")
     assert d.store.rows == {}
-    assert "enregistrée" in consent_by_phone(d)
+    assert "enregistré" in consent_by_phone(d)
     assert d.store.rows[7]["primary_track"] == expected_track
 
 
@@ -359,7 +373,8 @@ def test_pause_resume_and_human_request_mid_contact():
     assert "pause" in d.say("/annuler")
     assert "formation" in d.say("Que mettre dans mon CV ?")
     assert "niveau scolaire" in d.say("/reprendre")
-    assert "nom de famille" in d.say("/humain")
+    assert "projet préparez-vous" in d.say("/humain")
+    assert "nom de famille" in d.say("project:ausbildung", callback=True)
     d.say("Martin")
     assert "prénom" in d.say("/humain")
     assert d.bot.sessions[7].last_name == "Martin"
@@ -367,9 +382,7 @@ def test_pause_resume_and_human_request_mid_contact():
 
 def test_invalid_phone_refusal_then_direct_human_request():
     d = Dialog()
-    assert "nom de famille" in d.say("/humain")
-    d.say("Martin")
-    d.say("Alice")
+    reach_premium_phone(d)
     local = d.say("06 12 34 56 78")
     assert "+213612345678" in local and "format international" in local
     assert d.bot.sessions[7].contact_detail == "+213612345678"
@@ -382,20 +395,21 @@ def test_invalid_phone_refusal_then_direct_human_request():
     assert "enregistrera" in d.say("oui")
     assert "Aucune nouvelle fiche" in d.say("je refuse")
     assert d.store.rows == {}
-    d.say("/humain")
-    d.say("Durand")
-    d.say("Nora")
-    d.say("+33612345678")
-    d.say("oui")
-    assert "enregistrée" in d.say("j'accepte")
-    assert d.store.rows[7]["last_name"] == "Durand"
-    assert "en Allemagne en Allemagne" not in d.store.rows[7]["summary"]
+    d2 = Dialog()
+    reach_premium_phone(d2, "emploi")
+    d2.bot.sessions[7].last_name = "Durand"
+    d2.bot.sessions[7].first_name = "Nora"
+    d2.say("+33612345678")
+    d2.say("oui")
+    assert "enregistré" in d2.say("j'accepte")
+    assert d2.store.rows[7]["last_name"] == "Durand"
+    assert "en Allemagne en Allemagne" not in d2.store.rows[7]["summary"]
 
 
 def test_prices_guarantees_visa_unknown_and_injection():
     d = Dialog()
     price = d.say("Combien coûte la consultation ?")
-    assert "2 000 DA" in price and "à confirmer" in price
+    assert "Aucun paiement de consultation" in price and "1 000 DA" in price
     language = d.say("Combien coûte la formation Virtulingo ?")
     assert "89 000 DA" in language and "105 000 DA" in language
     guarantee = d.say("Garantissez-vous deux entretiens et un remboursement ?")
@@ -412,10 +426,11 @@ def test_prices_guarantees_visa_unknown_and_injection():
 
 def test_duplicate_update_and_storage_error_are_honest():
     d = Dialog()
-    for text in ("/humain", "Martin", "Alice", "+33612345678", "oui"):
-        d.say(text)
+    reach_premium_phone(d)
+    d.say("+33612345678")
+    d.say("oui")
     d.update += 1
-    assert "enregistrée" in d.bot.handle(7, d.update, "j'accepte").text
+    assert "enregistré" in d.bot.handle(7, d.update, "j'accepte").text
     assert d.bot.handle(7, d.update, "j'accepte") is None
     assert len(d.store.consents) == 1
 
@@ -424,9 +439,12 @@ def test_duplicate_update_and_storage_error_are_honest():
             raise ConnectionError("private-dsn")
 
     f = ConversationService(FailedStore())
-    for i, text in enumerate(("/humain", "Martin", "Alice", "+33612345678", "oui"), 1):
+    f.handle(8, 1, "/humain")
+    f.handle(8, 2, "project:etudes", True)
+    for i, text in enumerate(("Martin", "Alice", "28", "Master informatique", "IA",
+                              "B1", "B2", "3 ans", "+33612345678", "oui"), 3):
         f.handle(8, i, text)
-    answer = f.handle(8, 6, "j'accepte").text
+    answer = f.handle(8, 13, "j'accepte").text
     assert "Aucun rappel n'est confirmé" in answer and "private-dsn" not in answer
 
 

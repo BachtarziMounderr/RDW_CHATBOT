@@ -26,6 +26,7 @@ TRACKS = (
     ("volontariat", "Volontariat"),
 )
 FACT_FIELDS = {
+    "age": "Âge",
     "desired_degree": "Formation visée",
     "desired_field": "Domaine souhaité",
     "current_degree": "Dernier diplôme",

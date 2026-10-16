@@ -41,7 +41,8 @@ class PostgresLeadStore(PostgresStore):
         super().init_schema()
         with self.connect() as conn:
             for migration in ("002_conversation.sql", "003_contact_name.sql", "004_knowledge_review.sql",
-                              "005_sales_funnel.sql", "006_funnel_sessions.sql"):
+                              "005_sales_funnel.sql", "006_funnel_sessions.sql",
+                              "007_premium_payments.sql"):
                 sql = (Path(__file__).parent / "sql" / migration).read_text(encoding="utf-8")
                 conn.execute(sql)
 
@@ -59,6 +60,11 @@ class PostgresLeadStore(PostgresStore):
                 raise RuntimeError("Schéma de revue absent. Lancez : python -m bot.main init-db")
             if conn.execute("SELECT to_regclass('telegram.funnel_sessions')").fetchone()[0] is None:
                 raise RuntimeError("Schéma du tunnel absent. Lancez : python -m bot.main init-db")
+            if conn.execute(
+                    "SELECT 1 FROM information_schema.columns WHERE table_schema='telegram' "
+                    "AND table_name='payment_events' AND column_name='source_message_id'"
+            ).fetchone() is None:
+                raise RuntimeError("Schéma de paiement absent. Lancez : python -m bot.main init-db")
 
     def save(self, user_id: int, update_id: int, data: dict, version: str) -> bool:
         from psycopg.types.json import Jsonb
@@ -96,6 +102,10 @@ class PostgresLeadStore(PostgresStore):
                     "INSERT INTO telegram.consent_events (telegram_user_id,purpose,granted,text_version) "
                     "VALUES (%s,'contact',true,%s)", (user_id, version),
                 )
+                conn.execute(
+                    "UPDATE telegram.prospects SET admin_notified_at=NULL "
+                    "WHERE telegram_user_id=%s", (user_id,),
+                )
                 return True
 
     def get(self, user_id: int) -> dict | None:
@@ -120,6 +130,26 @@ class PostgresLeadStore(PostgresStore):
                 conn.execute("SELECT pg_advisory_xact_lock(%s)", (user_id,))
                 for table in ("prospects", "conversation_state", "consent_events", "bot_events"):
                     conn.execute(f"DELETE FROM telegram.{table} WHERE telegram_user_id=%s", (user_id,))
+
+    def pending_admin_notifications(self, limit: int = 5) -> list[dict]:
+        with self.connect() as conn:
+            rows = conn.execute(
+                "SELECT telegram_user_id,track,last_name,first_name,contact_detail,project_summary,profile_json "
+                "FROM telegram.prospects WHERE handoff_requested=true AND contact_confirmed=true "
+                "AND consent_at IS NOT NULL AND admin_notified_at IS NULL "
+                "ORDER BY updated_at LIMIT %s", (limit,),
+            ).fetchall()
+        return [{
+            "user_id": row[0], "track": row[1], "last_name": row[2], "first_name": row[3],
+            "phone": row[4], "summary": row[5], "profile": row[6] or {},
+        } for row in rows]
+
+    def mark_admin_notified(self, user_id: int):
+        with self.connect() as conn:
+            conn.execute(
+                "UPDATE telegram.prospects SET admin_notified_at=now() "
+                "WHERE telegram_user_id=%s AND admin_notified_at IS NULL", (user_id,),
+            )
 
     def export_handoffs(self):
         with self.connect() as conn:

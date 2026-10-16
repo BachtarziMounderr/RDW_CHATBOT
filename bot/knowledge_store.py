@@ -63,6 +63,7 @@ class MemoryKnowledgeStore:
         self.preferences: dict[int, bool] = {}
         self.messages: list[dict] = []
         self.funnel_sessions: dict[int, dict] = {}
+        self.payments: list[dict] = []
 
     def load_funnel_state(self, user_id: int) -> dict | None:
         state = self.funnel_sessions.get(user_id)
@@ -149,7 +150,46 @@ class MemoryKnowledgeStore:
         self.delete_funnel_state(user_id)
 
     def payment_counts(self) -> dict[str, int]:
-        return {}
+        return dict(Counter(item["status"] for item in self.payments))
+
+    def create_payment_receipt(self, user_id: int, *, update_id: int, media_type: str,
+                               file_id: str, file_unique_id: str,
+                               source_chat_id: int, source_message_id: int,
+                               amount_dzd: int, language: str = "fr") -> dict:
+        existing = next((item for item in self.payments
+                         if item["file_unique_id"] == file_unique_id), None)
+        if existing:
+            return dict(existing)
+        item = {
+            "id": len(self.payments) + 1, "user_id": user_id, "update_id": update_id,
+            "media_type": media_type, "file_id": file_id, "file_unique_id": file_unique_id,
+            "source_chat_id": source_chat_id, "source_message_id": source_message_id,
+            "amount_dzd": amount_dzd, "language": language, "status": "unverified",
+            "notified_at": None, "reviewed_by": None, "invite_link": None,
+        }
+        self.payments.append(item)
+        return dict(item)
+
+    def pending_payment_receipts(self, limit: int = 5) -> list[dict]:
+        return [dict(item) for item in self.payments
+                if item["status"] == "unverified" and item["notified_at"] is None][:limit]
+
+    def mark_payment_notified(self, payment_id: int):
+        item = next((item for item in self.payments if item["id"] == payment_id), None)
+        if item:
+            item["notified_at"] = datetime.now(timezone.utc)
+
+    def get_payment(self, payment_id: int) -> dict | None:
+        item = next((item for item in self.payments if item["id"] == payment_id), None)
+        return dict(item) if item else None
+
+    def review_payment(self, payment_id: int, admin_id: int, status: str,
+                       invite_link: str | None = None) -> dict | None:
+        item = next((item for item in self.payments if item["id"] == payment_id), None)
+        if not item or item["status"] != "unverified" or status not in {"verified", "rejected"}:
+            return None
+        item.update(status=status, reviewed_by=admin_id, invite_link=invite_link)
+        return dict(item)
 
 
 class PostgresKnowledgeStore(PostgresStore):
@@ -314,3 +354,75 @@ class PostgresKnowledgeStore(PostgresStore):
         with self.connect() as conn:
             rows = conn.execute("SELECT status,count(*) FROM telegram.payment_events GROUP BY status").fetchall()
         return dict(rows)
+
+    def create_payment_receipt(self, user_id: int, *, update_id: int, media_type: str,
+                               file_id: str, file_unique_id: str,
+                               source_chat_id: int, source_message_id: int,
+                               amount_dzd: int, language: str = "fr") -> dict:
+        from psycopg.types.json import Jsonb
+
+        payload = Jsonb({"update_id": update_id, "language": language})
+        with self.connect() as conn:
+            row = conn.execute(
+                "INSERT INTO telegram.payment_events "
+                "(telegram_user_id,provider,external_reference,amount_minor,currency,status,event_payload,"
+                "media_type,telegram_file_id,telegram_file_unique_id,source_chat_id,source_message_id) "
+                "VALUES (%s,'telegram_receipt',%s,%s,'DZD','unverified',%s,%s,%s,%s,%s,%s) "
+                "ON CONFLICT (provider,external_reference) DO UPDATE SET external_reference=EXCLUDED.external_reference "
+                "RETURNING id,telegram_user_id,amount_minor,status,media_type,telegram_file_id,"
+                "telegram_file_unique_id,source_chat_id,source_message_id,notified_at,reviewed_by,invite_link,event_payload",
+                (user_id, file_unique_id, amount_dzd * 100, payload, media_type, file_id,
+                 file_unique_id, source_chat_id, source_message_id),
+            ).fetchone()
+        return self._payment_dict(row)
+
+    @staticmethod
+    def _payment_dict(row) -> dict:
+        payload = row[12] or {}
+        return {
+            "id": row[0], "user_id": row[1], "amount_dzd": int(row[2] or 0) // 100,
+            "status": row[3], "media_type": row[4], "file_id": row[5],
+            "file_unique_id": row[6], "source_chat_id": row[7], "source_message_id": row[8],
+            "notified_at": row[9], "reviewed_by": row[10], "invite_link": row[11],
+            "language": payload.get("language", "fr"),
+        }
+
+    def pending_payment_receipts(self, limit: int = 5) -> list[dict]:
+        with self.connect() as conn:
+            rows = conn.execute(
+                "SELECT id,telegram_user_id,amount_minor,status,media_type,telegram_file_id,"
+                "telegram_file_unique_id,source_chat_id,source_message_id,notified_at,reviewed_by,invite_link,event_payload "
+                "FROM telegram.payment_events WHERE provider='telegram_receipt' "
+                "AND status='unverified' AND notified_at IS NULL ORDER BY id LIMIT %s", (limit,),
+            ).fetchall()
+        return [self._payment_dict(row) for row in rows]
+
+    def mark_payment_notified(self, payment_id: int):
+        with self.connect() as conn:
+            conn.execute(
+                "UPDATE telegram.payment_events SET notified_at=now() "
+                "WHERE id=%s AND notified_at IS NULL", (payment_id,),
+            )
+
+    def get_payment(self, payment_id: int) -> dict | None:
+        with self.connect() as conn:
+            row = conn.execute(
+                "SELECT id,telegram_user_id,amount_minor,status,media_type,telegram_file_id,"
+                "telegram_file_unique_id,source_chat_id,source_message_id,notified_at,reviewed_by,invite_link,event_payload "
+                "FROM telegram.payment_events WHERE id=%s", (payment_id,),
+            ).fetchone()
+        return self._payment_dict(row) if row else None
+
+    def review_payment(self, payment_id: int, admin_id: int, status: str,
+                       invite_link: str | None = None) -> dict | None:
+        if status not in {"verified", "rejected"}:
+            raise ValueError("Statut de paiement invalide")
+        with self.connect() as conn:
+            row = conn.execute(
+                "UPDATE telegram.payment_events SET status=%s,reviewed_by=%s,reviewed_at=now(),invite_link=%s "
+                "WHERE id=%s AND status='unverified' "
+                "RETURNING id,telegram_user_id,amount_minor,status,media_type,telegram_file_id,"
+                "telegram_file_unique_id,source_chat_id,source_message_id,notified_at,reviewed_by,invite_link,event_payload",
+                (status, admin_id, invite_link, payment_id),
+            ).fetchone()
+        return self._payment_dict(row) if row else None

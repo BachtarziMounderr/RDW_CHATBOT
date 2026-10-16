@@ -37,7 +37,7 @@ def test_strict_funnel_reaches_premium_and_vip_payment_paths():
     pitch = premium.send("ebook:continue", callback=True)
     assert {value for _, value in pitch.buttons} == {"funnel:premium", "funnel:self"}
     project = premium.send("funnel:premium", callback=True)
-    assert "2 000 DA" in project.text
+    assert "formulaire" in project.text
     assert {value for _, value in project.buttons} == {"project:etudes", "project:ausbildung", "project:emploi"}
 
     vip = Dialog(payment_proof_telegram="0541501832")
@@ -45,11 +45,11 @@ def test_strict_funnel_reaches_premium_and_vip_payment_paths():
     vip.send("lang:fr", callback=True)
     vip.send("ebook:continue", callback=True)
     offer = vip.send("funnel:self", callback=True)
-    assert "500 DA" in offer.text and "accès à vie" in offer.text
+    assert "1 000 DA" in offer.text and "valable à vie" in offer.text
     payment = vip.send("vip:join", callback=True)
     assert "BaridiMob" in payment.text and "CCP" in payment.text
     assert "0541501832" in payment.text
-    assert "vérifiera le paiement manuellement" in payment.text
+    assert "photo ou le PDF du reçu" in payment.text
 
 
 def test_question_during_tunnel_is_answered_then_same_step_resumes():
@@ -59,7 +59,7 @@ def test_question_during_tunnel_is_answered_then_same_step_resumes():
     d.send("ebook:continue", callback=True)
     reply = d.send("Est-ce que vous aidez pour traduire les documents ?")
     assert "traduction" in reply.text
-    assert "Préférez-vous" in reply.text
+    assert "Quelle voie" in reply.text
     assert {value for _, value in reply.buttons} == {"funnel:premium", "funnel:self"}
 
 
@@ -69,7 +69,7 @@ def test_arabic_choice_changes_tunnel_and_documentary_answer_language():
     ebook = d.send("lang:ar", callback=True)
     assert "دليل" in ebook.text
     pitch = d.send("ebook:continue", callback=True)
-    assert "مرافقتنا" in pitch.text
+    assert "المرافقة" in pitch.text
     answer = d.send("هل تساعدون في ترجمة الوثائق؟")
     assert any("\u0600" <= char <= "\u06ff" for char in answer.text)
     assert "الترجمة" in answer.text
@@ -96,7 +96,7 @@ def test_non_personal_funnel_stage_survives_a_service_restart():
 
     restarted = ConversationService(MemoryLeadStore(), review_store=state_store)
     pitch = restarted.handle(42, 3, "ebook:continue", True)
-    assert "مرافقتنا" in pitch.text
+    assert "المرافقة" in pitch.text
     assert restarted.sessions[42].language == "ar"
 
 
@@ -125,16 +125,15 @@ def test_groq_receives_selected_arabic_language_and_returns_grounded_arabic(tmp_
 
     assert transport.payload["output_language"] == "ar"
     assert answer.text.startswith("يمكن لوكالتنا")
-    assert "مرافقتنا المميزة" in answer.text
+    assert "المرافقة المميزة" in answer.text
 
 
 def _reach_last_name(dialog: Dialog):
     dialog.send("/start")
     dialog.send("lang:fr", callback=True)
     dialog.send("ebook:continue", callback=True)
-    dialog.send("funnel:self", callback=True)
-    dialog.send("vip:join", callback=True)
-    return dialog.send("vip:consultant", callback=True)
+    dialog.send("funnel:premium", callback=True)
+    return dialog.send("project:etudes", callback=True)
 
 
 def test_conversation_permission_is_answered_naturally_without_losing_the_stage():
@@ -146,13 +145,13 @@ def test_conversation_permission_is_answered_naturally_without_losing_the_stage(
     assert "Oui, bien sûr" in permission.text
     assert "l'Ebook, notre agence ou vos démarches" in permission.text
     assert "nom de famille" not in permission.text
-    assert d.bot.sessions[42].stage == "last_name"
+    assert d.bot.sessions[42].stage == "premium_last_name"
     assert knowledge.questions == []
 
     documentary = d.send("Est-ce que vous traduisez les documents ?")
     assert "traduction" in documentary.text
     assert "nom de famille" in documentary.text
-    assert d.bot.sessions[42].stage == "last_name"
+    assert d.bot.sessions[42].stage == "premium_last_name"
 
 
 def test_arabic_permission_to_ask_questions_is_natural_and_keeps_stage():

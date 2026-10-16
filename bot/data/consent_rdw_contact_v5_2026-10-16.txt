@@ -1,0 +1,1 @@
+Avec votre accord, RDW enregistrera les informations que vous venez de fournir dans ce formulaire ainsi que votre numéro confirmé. L’équipe commerciale pourra les consulter pour évaluer votre demande Premium et vous contacter. Vous pourrez voir votre fiche avec /mes_donnees et demander sa suppression avec /supprimer. Acceptez-vous cet enregistrement et ce contact ?

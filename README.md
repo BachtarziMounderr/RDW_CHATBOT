@@ -12,13 +12,13 @@ Le lien à placer dans le canal Telegram gratuit est :
 
 Telegram demande toujours à la personne d'appuyer sur **Démarrer** avant qu'un bot puisse lui écrire. Dès cette action, le bot demande le français ou l'arabe, envoie le PDF original, puis affiche `📖 J'ai lu l'Ebook / Continuer`. Le bouton présente l'accompagnement Premium et laisse choisir entre l'agence et une démarche autonome. Une question posée pendant ce parcours reçoit une réponse avant la reprise de l'étape. Le paramètre `canal_gratuit` est enregistré dans la fiche uniquement après le consentement final.
 
-Le routage préparé distingue sans menu numéroté :
+Le routage distingue deux voies après l'Ebook :
 
-- une personne prête à avancer avec RDW : qualification progressive, résumé, présentation de la consultation à `2 000 DA`, coordonnées, consentement puis fiche dashboard ;
+- **Premium** : le candidat confirme cette voie, choisit son projet puis remplit dans le bot le formulaire nom, prénom, âge, diplôme, domaine, allemand, anglais, expérience et téléphone. Après consentement, la fiche apparaît dans le dashboard et les administrateurs reçoivent une notification ; aucun paiement de consultation n'est demandé dans le bot ;
 - une personne qui cherche des informations sur RDW ou le guide : réponses fondées sur le corpus actif et commande `/guide` pour voir les sujets disponibles ;
-- une personne qui indique vouloir surtout avancer seule, ou qui enchaîne plusieurs questions pratiques sans demander l'accompagnement de l'agence : présentation naturelle du canal privé à `500 DA`, avec des informations complémentaires, des lives et un accès à vie après un paiement unique. La commande `/canal` permet de demander les modalités.
+- **Solo** : présentation du canal VIP à `1 000 DA`, paiement unique pour un accès à vie, avec lives, ressources, pratique de l'allemand, entraide et possibilité de passer ensuite au Premium. La commande `/canal` affiche cette offre.
 
-Les deux prix sont configurables localement avec `CONSULTATION_PRICE_DZD` et `PRIVATE_CHANNEL_PRICE_DZD`. Le compte qui reçoit la preuve est défini par `PAYMENT_PROOF_TELEGRAM`. Les coordonnées réelles de paiement doivent être saisies dans `BARIDIMOB_PAYMENT_DETAILS` et `CCP_PAYMENT_DETAILS` ; si elles sont vides, le bot demande au client de les obtenir auprès du compte de paiement au lieu d'en inventer. Aucun prestataire de paiement ni accès automatique au canal n'est connecté : l'administrateur confirme manuellement le paiement et ajoute la personne au canal. Une capture d'écran n'est jamais considérée par le bot comme une preuve vérifiée.
+Le prix VIP est configurable avec `PRIVATE_CHANNEL_PRICE_DZD`. Les coordonnées réelles de paiement doivent être saisies dans `BARIDIMOB_PAYMENT_DETAILS` et `CCP_PAYMENT_DETAILS` ; si elles sont vides, le bot demande au client de les obtenir auprès du support `PAYMENT_PROOF_TELEGRAM` au lieu d'en inventer. Le client envoie ensuite la photo ou le PDF du reçu directement au bot. Le reçu reste `unverified` jusqu'au clic d'un administrateur. Après validation, le bot crée un lien Telegram limité à un membre et l'envoie au client. `VIP_CHANNEL_ID` doit contenir l'identifiant du canal privé et le bot doit y être administrateur avec le droit de créer des invitations.
 
 ## Démarrer et arrêter
 
@@ -85,7 +85,7 @@ Une personne peut aussi dire « Je veux juste me renseigner sur l'agence » ou d
 
 Le bot reconnaît aussi des formulations courantes en daridja algérienne, en alphabet latin, en Arabizi ou en arabe, par exemple « wach tdirou », « ch7al souma » et « nheb nqra master ». Il répond en français ou en arabe selon le choix fait au démarrage. Lorsqu'elle passe les contrôles locaux, la question non sensible peut être transmise à Groq avec les passages publics du guide afin de comprendre les reformulations. Les coordonnées, identifiants Telegram, documents et étapes de collecte restent locaux. Ce filtrage ne rend pas le texte anonyme.
 
-Avant l'accord final, les faits du projet et les coordonnées restent uniquement en mémoire du processus, au plus deux heures après le dernier message. Neon conserve seulement la langue et l'étape commerciale sans texte libre ni coordonnées afin de reprendre le tunnel après un redémarrage. Après confirmation du résumé, le bot propose un contact. Si la personne accepte, il demande **nom, prénom et numéro de téléphone**, fait confirmer le numéro, présente le [texte d'accord versionné](bot/data/consent_rdw_contact_v4_2026-10-13.txt), puis enregistre dans PostgreSQL seulement après « J'accepte ». Un mobile algérien peut être saisi directement au format local, par exemple `0550123456` ; le bot le convertit en `+213550123456` avant confirmation. Les formats internationaux avec `+` ou `00` restent acceptés.
+Avant l'accord final, les données du formulaire Premium restent uniquement en mémoire du processus, au plus deux heures après le dernier message. Neon conserve seulement la langue et l'étape commerciale sans texte libre ni coordonnées afin de reprendre le tunnel après un redémarrage. Le bot confirme le téléphone, présente le [texte d'accord versionné](bot/data/consent_rdw_contact_v5_2026-10-16.txt), puis enregistre le formulaire dans PostgreSQL seulement après « J'accepte ». Un mobile algérien peut être saisi directement au format local, par exemple `0550123456` ; le bot le convertit en `+213550123456` avant confirmation. Les formats internationaux avec `+` ou `00` restent acceptés.
 
 Pour exporter localement les demandes consenties dans un **nouveau** CSV à remettre seulement à l'équipe RDW :
 
@@ -116,6 +116,8 @@ L'interface de gestion reste dans Telegram :
 - `/contenu Question | Réponse` : ajouter une réponse documentaire ;
 - `/video Titre | https://...` : publier un lien YouTube ou Vimeo dans `/videos` ;
 - `/paiements` : afficher les nombres d'événements par statut.
+- `/valider_paiement N` : valider manuellement le reçu N et envoyer un lien VIP à usage unique ;
+- `/refuser_paiement N` : refuser le reçu N et inviter le client à renvoyer une preuve correcte.
 
 Une vidéo est publiée comme ressource. Elle ne devient une source factuelle du RAG qu'après ajout d'une transcription ou d'une réponse textuelle validée. Les commandes de gestion sont refusées aux autres comptes.
 
@@ -128,12 +130,12 @@ Les nouvelles tables additives sont :
 - `knowledge_entries` pour les réponses, FAQ et vidéos validées ;
 - `review_questions` pour les questions à traiter et les candidats FAQ ;
 - `history_preferences` et `conversation_messages` pour l'historique volontaire ;
-- `payment_events` pour un futur historique issu d'un prestataire de paiement ;
+- `payment_events` pour les références Telegram des reçus, leur statut de contrôle, l'administrateur ayant traité le reçu et le lien généré ;
 - `funnel_sessions` pour la langue et l'étape non personnelle du parcours.
 
 L'historique brut est désactivé par défaut. La personne peut utiliser `/historique_on` avant la conversation, `/historique_off` pour arrêter les nouvelles écritures et `/supprimer` pour supprimer sa fiche et son historique local. Cela évite de conserver silencieusement des conversations personnelles. Telegram garde ses propres messages selon ses règles.
 
-Aucun prestataire de paiement n'est encore connecté. Une photo, un PDF ou une capture n'est jamais marqué comme paiement vérifié. Quand un prestataire sera choisi, seul son identifiant de transaction ou son webhook signé pourra faire passer un événement à `verified`; la contrainte d'unicité sur `(provider, external_reference)` limite les doublons et les rejeux. Le bot refuse actuellement les pièces jointes comme preuve de paiement.
+Aucun prestataire de paiement n'est connecté et le bot ne fait aucune reconnaissance automatique des captures. Il accepte une photo ou un PDF seulement à l'étape VIP, conserve la référence de fichier Telegram et la transmet aux administrateurs. Seul un administrateur autorisé peut passer le reçu à `verified`, après vérification visuelle. La contrainte d'unicité sur `(provider, external_reference)` limite les doublons. La validation déclenche un lien `createChatInviteLink` avec `member_limit=1`.
 
 ## Groq en test privé
 

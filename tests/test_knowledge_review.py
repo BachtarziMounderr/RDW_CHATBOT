@@ -8,7 +8,7 @@ from bot.admin import AdminService
 from bot.conversation import ConversationService
 from bot.knowledge_store import MemoryKnowledgeStore, PostgresKnowledgeStore, question_key, valid_video_url
 from bot.lead_store import MemoryLeadStore
-from bot.main import flush_review_notifications
+from bot.main import _payment_media, flush_payment_notifications, flush_review_notifications, review_payment
 
 
 def test_unknown_question_notifies_once_and_owner_answer_is_reused():
@@ -98,6 +98,55 @@ def test_faq_video_and_history_are_explicit_and_deletable():
 def test_payment_status_never_accepts_a_screenshot_as_verification():
     admin = AdminService(MemoryKnowledgeStore())
     assert "Aucun paiement" in admin.handle(7, "/paiements")
+
+
+def test_receipt_is_pending_until_admin_review_then_gets_one_use_link():
+    knowledge = MemoryKnowledgeStore()
+    receipt = knowledge.create_payment_receipt(
+        42, update_id=10, media_type="photo", file_id="file", file_unique_id="unique",
+        source_chat_id=42, source_message_id=8, amount_dzd=1000, language="fr",
+    )
+    assert receipt["status"] == "unverified"
+
+    class FakeBot:
+        def __init__(self):
+            self.copies = []
+            self.messages = []
+            self.invites = []
+
+        async def copy_message(self, **kwargs):
+            self.copies.append(kwargs)
+
+        async def send_message(self, chat_id, message):
+            self.messages.append((chat_id, message))
+
+        async def create_chat_invite_link(self, **kwargs):
+            self.invites.append(kwargs)
+            return SimpleNamespace(invite_link="https://t.me/+unique-test-link")
+
+    app = SimpleNamespace(
+        bot_data={"review_store": knowledge, "admin_user_ids": frozenset({7}),
+                  "vip_channel_id": "-1001234567890"},
+        bot=FakeBot(),
+    )
+    asyncio.run(flush_payment_notifications(app))
+    assert len(app.bot.copies) == 1
+    assert knowledge.get_payment(receipt["id"])["status"] == "unverified"
+
+    answer = asyncio.run(review_payment(app, 7, receipt["id"], True))
+    assert "lien unique" in answer
+    assert app.bot.invites[0]["member_limit"] == 1
+    assert knowledge.get_payment(receipt["id"])["status"] == "verified"
+    assert any(chat_id == 42 and "unique-test-link" in message for chat_id, message in app.bot.messages)
+
+
+def test_payment_media_accepts_photo_or_pdf_only():
+    photo = SimpleNamespace(file_id="p", file_unique_id="pu")
+    assert _payment_media(SimpleNamespace(photo=[photo], document=None)) == ("photo", "p", "pu")
+    pdf = SimpleNamespace(mime_type="application/pdf", file_id="d", file_unique_id="du")
+    assert _payment_media(SimpleNamespace(photo=[], document=pdf)) == ("pdf", "d", "du")
+    archive = SimpleNamespace(mime_type="application/zip", file_id="z", file_unique_id="zu")
+    assert _payment_media(SimpleNamespace(photo=[], document=archive)) is None
 
 
 @pytest.mark.skipif(not os.getenv("TEST_TELEGRAM_DATABASE_URL"), reason="PostgreSQL de test non configuré")

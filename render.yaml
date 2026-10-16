@@ -17,7 +17,7 @@ services:
       - key: TELEGRAM_WEBHOOK_PATH
         value: /telegram/webhook
       - key: TELEGRAM_ACCESS_MODE
-        value: private
+        value: public
       - key: TELEGRAM_ALLOWED_USER_IDS
         value: "7907520730,1953680558"
       - key: RDW_ADMIN_USER_IDS
@@ -34,15 +34,15 @@ services:
         value: 0.0.0.0
       - key: DASHBOARD_USERNAME
         value: rdw-admin
-      - key: CONSULTATION_PRICE_DZD
-        value: "2000"
       - key: PRIVATE_CHANNEL_PRICE_DZD
-        value: "500"
+        value: "1000"
       - key: PAYMENT_PROOF_TELEGRAM
         value: "0541501832"
       - key: BARIDIMOB_PAYMENT_DETAILS
         sync: false
       - key: CCP_PAYMENT_DETAILS
+        sync: false
+      - key: VIP_CHANNEL_ID
         sync: false
       - key: DEBUG_SOURCE_LABELS
         value: "false"

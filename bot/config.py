@@ -31,11 +31,11 @@ class Config:
     dashboard_port: int
     dashboard_username: str
     dashboard_password: str
-    consultation_price_dzd: int
     private_channel_price_dzd: int
     payment_proof_telegram: str
     baridimob_payment_details: str
     ccp_payment_details: str
+    vip_channel_id: str
     debug_source_labels: bool
     telegram_transport: str
     webhook_public_url: str
@@ -136,11 +136,11 @@ def load_config() -> Config:
         dashboard_port=_bounded_int(dashboard_port_name, 8765, 1024, 65535),
         dashboard_username=dashboard_username,
         dashboard_password=dashboard_password,
-        consultation_price_dzd=_bounded_int("CONSULTATION_PRICE_DZD", 2000, 0, 1_000_000),
-        private_channel_price_dzd=_bounded_int("PRIVATE_CHANNEL_PRICE_DZD", 500, 0, 1_000_000),
+        private_channel_price_dzd=_bounded_int("PRIVATE_CHANNEL_PRICE_DZD", 1000, 0, 1_000_000),
         payment_proof_telegram=os.getenv("PAYMENT_PROOF_TELEGRAM", "0541501832").strip(),
         baridimob_payment_details=os.getenv("BARIDIMOB_PAYMENT_DETAILS", "").strip(),
         ccp_payment_details=os.getenv("CCP_PAYMENT_DETAILS", "").strip(),
+        vip_channel_id=os.getenv("VIP_CHANNEL_ID", "").strip(),
         debug_source_labels=os.getenv("DEBUG_SOURCE_LABELS", "false").strip().lower() == "true",
         telegram_transport=telegram_transport,
         webhook_public_url=webhook_public_url,

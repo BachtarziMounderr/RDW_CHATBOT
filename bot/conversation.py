@@ -18,7 +18,7 @@ from .darija import (is_information_request as is_darija_information,
 from .sales_funnel import AGENCY_INFO, CONSULTATION, PROCEDURE_INFO, SELF_GUIDED, detect_sales_intent
 
 
-CONSENT_VERSION = "rdw_contact_v4_2026-10-13"
+CONSENT_VERSION = "rdw_contact_v5_2026-10-16"
 CONSENT_TEXT = (Path(__file__).parent / "data" / f"consent_{CONSENT_VERSION}.txt").read_text(encoding="utf-8").strip()
 YES = {"oui", "ouais", "d'accord", "ok", "exact", "c'est correct", "je confirme", "نعم", "صحيح", "أوافق", "اوافق"}
 NO = {"non", "pas maintenant", "je refuse", "non merci", "لا", "ليس الآن", "ارفض", "أرفض"}
@@ -65,6 +65,10 @@ FOLLOW_UP_PIVOT = re.compile(
     r"ausbildung|emploi|etudes?|consultations?|traduction|lettre|installation)\b", re.I)
 TRACK_LABELS = {"etudes": "études", "ausbildung": "Ausbildung", "emploi": "emploi", "volontariat": "volontariat"}
 SUPPORTED_TRACKS = {"etudes", "ausbildung", "emploi"}
+PREMIUM_FORM_STAGES = {
+    "premium_last_name", "premium_first_name", "premium_age", "premium_degree",
+    "premium_field", "premium_german", "premium_english", "premium_experience",
+}
 
 
 def is_question_permission(text: str) -> bool:
@@ -300,7 +304,7 @@ def extract_declared(text: str) -> tuple[list[str], dict[str, str], list[str]]:
 class ConversationService:
     def __init__(self, store, corpus: Corpus | None = None, interpreter=None, clock=None,
                  composer=None, review_store=None, admin_user_ids: frozenset[int] = frozenset(),
-                 consultation_price_dzd: int = 2000, private_channel_price_dzd: int = 500,
+                 private_channel_price_dzd: int = 1000,
                  payment_proof_telegram: str = "0541501832",
                  baridimob_payment_details: str = "", ccp_payment_details: str = "",
                  debug_source_labels: bool = False):
@@ -311,7 +315,6 @@ class ConversationService:
         self.composer = composer
         self.review_store = review_store
         self.admin_user_ids = frozenset(admin_user_ids)
-        self.consultation_price_dzd = consultation_price_dzd
         self.private_channel_price_dzd = private_channel_price_dzd
         self.payment_proof_telegram = payment_proof_telegram
         self.baridimob_payment_details = baridimob_payment_details
@@ -390,7 +393,7 @@ class ConversationService:
                 or is_question_permission(value)
                 or THANKS.match(value.strip()) or FRUSTRATION.search(value)):
             return self._with_source_label(reply, "RAG")
-        private_stages = {"last_name", "first_name", "contact_detail", "contact_confirm", "consent"}
+        private_stages = {"last_name", "first_name", "contact_detail", "contact_confirm", "consent"} | PREMIUM_FORM_STAGES
         if (not session or ((previous_stage in private_stages or session.stage in private_stages)
                             and not self._looks_like_question(value))):
             return self._with_source_label(reply, "RAG")
@@ -412,6 +415,10 @@ class ConversationService:
         if topic != local_topic and topic in self.knowledge.by_id:
             corrected = self._answer_question(session, value, topic)
             reply = Reply(corrected + ("\n\n" + next_question if next_question else ""), reply.buttons)
+        # La politique commerciale actuelle remplace l'ancienne consultation payante du guide.
+        # Elle est rendue localement afin qu'aucun modèle ne puisse réintroduire l'ancien tarif.
+        if topic == "tarifs":
+            return self._with_source_label(reply, "RAG")
         if topic == "cv_documents":
             passages = [self.knowledge.by_id[key] for key in ("cv", "documents")]
         elif topic in self.knowledge.by_id:
@@ -463,7 +470,7 @@ class ConversationService:
         if private_offer_due:
             session.private_channel_presented = True
             normalized_generated = normalize(generated)
-            required_offer_details = ("canal", "live", "500", "vie", "unique", "/canal")
+            required_offer_details = ("canal", "live", "1000", "vie", "unique", "/canal")
             if not all(item in normalized_generated for item in required_offer_details):
                 generated += "\n\n" + self._private_channel_teaser(session)
         if session.stage == "premium_choice":
@@ -478,10 +485,67 @@ class ConversationService:
             body = generated + ("\n\n" + next_question if next_question else "")
         return self._with_source_label(Reply(body, reply.buttons), getattr(self.composer, "provider_label", "IA"))
 
+    def receive_payment_receipt(self, user_id: int, update_id: int, *, media_type: str,
+                                file_id: str, file_unique_id: str,
+                                source_chat_id: int, source_message_id: int) -> Reply:
+        """Enregistre la référence Telegram du reçu; aucune validation automatique."""
+        if user_id not in self.sessions and self.review_store and hasattr(self.review_store, "load_funnel_state"):
+            restored = self.review_store.load_funnel_state(user_id)
+            if restored:
+                self.sessions[user_id] = Session(**restored)
+        session = self.sessions.get(user_id)
+        if not session or session.stage != "vip_payment":
+            return Reply(
+                "Je peux recevoir une preuve de paiement uniquement après le choix du canal VIP. "
+                "Utilisez /canal pour voir l'offre et les modalités."
+            )
+        if media_type not in {"photo", "pdf"} or not self.review_store or not hasattr(self.review_store, "create_payment_receipt"):
+            return Reply(self._t(session,
+                                 "Envoyez une photo nette ou un fichier PDF du reçu.",
+                                 "أرسلوا صورة واضحة أو ملف PDF للوصل."))
+        payment = self.review_store.create_payment_receipt(
+            user_id, update_id=update_id, media_type=media_type, file_id=file_id,
+            file_unique_id=file_unique_id, source_chat_id=source_chat_id,
+            source_message_id=source_message_id, amount_dzd=self.private_channel_price_dzd,
+            language=session.language or "fr",
+        )
+        if payment.get("user_id") != user_id:
+            return Reply(self._t(
+                session,
+                "Ce fichier a déjà été soumis dans une autre demande. Envoyez votre propre reçu original.",
+                "سبق إرسال هذا الملف في طلب آخر. أرسلوا الوصل الأصلي الخاص بكم.",
+            ))
+        if payment.get("status") == "verified":
+            suffix = f"\n{payment['invite_link']}" if payment.get("invite_link") else ""
+            return Reply(self._t(
+                session,
+                "Ce reçu a déjà été validé. Votre lien VIP est déjà disponible :",
+                "تم تأكيد هذا الوصل من قبل. رابط VIP متاح لديكم:",
+            ) + suffix)
+        if payment.get("status") == "rejected":
+            return Reply(self._t(
+                session,
+                "Ce reçu a déjà été refusé. Envoyez une nouvelle photo ou un nouveau PDF après avoir vérifié le montant et le bénéficiaire.",
+                "تم رفض هذا الوصل من قبل. أرسلوا صورة أو ملف PDF جديدا بعد التحقق من المبلغ والمستفيد.",
+            ))
+        session.offer_status = "payment_pending"
+        if hasattr(self.review_store, "save_funnel_state"):
+            self.review_store.save_funnel_state(user_id, {
+                "language": session.language, "stage": session.stage,
+                "lead_source": session.lead_source, "funnel_route": "private_channel",
+                "offer_status": session.offer_status,
+                "private_channel_presented": True,
+            })
+        return Reply(self._t(
+            session,
+            f"Reçu #{payment['id']} bien reçu. Il a été placé en attente de vérification par l'équipe RDW. Dès qu'un administrateur le valide, le bot vous enverra ici votre lien personnel d'accès au canal VIP.",
+            f"تم استلام الوصل رقم {payment['id']}. هو الآن في انتظار تحقق فريق RDW. بعد موافقة المسؤول، يرسل لكم البوت هنا رابطكم الشخصي للدخول إلى قناة VIP.",
+        ), payment_id=payment["id"])
+
     def _with_source_label(self, reply: Reply | None, source: str) -> Reply | None:
         if not reply or not self.debug_source_labels:
             return reply
-        return Reply(f"Réponse {source} :\n{reply.text}", reply.buttons, reply.document_path)
+        return Reply(f"Réponse {source} :\n{reply.text}", reply.buttons, reply.document_path, reply.payment_id)
 
     def _should_suggest_private_channel(self, session: Session, topic: str | None,
                                         text: str, repeated: bool) -> bool:
@@ -512,13 +576,12 @@ class ConversationService:
                                 "pour recevoir les modalités, sans exercer de pression."),
             }
         if session.funnel_route == "consultation" or topic in {"consultation", "tarifs", "tarifs_langue"}:
-            price = f"{self.consultation_price_dzd:,}".replace(",", " ")
             return {
                 "goal": "agency_consultation",
                 "when": "La personne montre un intérêt pour les prix, la consultation ou un accompagnement par notre agence.",
-                "approved_facts": (f"Une consultation avec un conseiller commercial de notre agence est indiquée à {price} DA. "
-                                   "Elle sert à examiner le projet ; les autres prestations font l'objet d'un devis."),
-                "next_action": "Après avoir répondu, demander sans insister si la personne souhaite préparer une consultation.",
+                "approved_facts": ("L'évaluation Premium sert à comparer le profil avec les possibilités disponibles. "
+                                   "Le bot ne demande aucun paiement de consultation ; les prestations Premium font ensuite l'objet d'un contrat et d'un devis."),
+                "next_action": "Après avoir répondu, proposer le formulaire Premium seulement si la personne confirme vouloir démarrer cette voie.",
             }
         return {
             "goal": "ebook_information",
@@ -570,14 +633,18 @@ class ConversationService:
                 return Reply(self._payment_instructions(s), self._vip_payment_buttons(s))
             if value == "vip:consultant":
                 s.funnel_route = "consultation"
-                s.stage = "offer_contact"
-                return self._contact_flow(s, user_id, update_id, "oui")
+                s.offer_status = "premium_interested"
+                s.stage = "premium_project"
+                return self._premium_start(s)
             if value.startswith("project:"):
                 track = value.partition(":")[2]
                 if track not in SUPPORTED_TRACKS:
                     return Reply(self._t(s, "Ce choix n'est plus valable.", "هذا الاختيار لم يعد صالحا."))
                 s.tracks = [track]
                 s.primary = track
+                if s.funnel_route == "consultation" and s.offer_status == "premium_interested":
+                    s.stage = "premium_last_name"
+                    return Reply(self._premium_stage_prompt(s))
                 s.stage = "explore"
                 return self._next(s)
             value = {"summary:yes": "oui", "summary:no": "non", "offer:yes": "oui",
@@ -592,7 +659,7 @@ class ConversationService:
             self.sessions[user_id] = Session(updated_at=now, lead_source=source, stage="language_choice")
             return Reply(self._language_welcome(), [("🇫🇷 Français", "lang:fr"), ("🇩🇿 العربية", "lang:ar")])
         if command == "/aide":
-            return Reply("Décrivez naturellement votre projet ou posez une question sur RDW. /guide présente les sujets du guide ; /faq affiche les réponses fréquentes ; /canal présente le canal privé d'informations et de lives. /reprendre reprend un échange ; /annuler le met en pause ; /humain prépare une demande de consultation ; /mes_donnees montre la fiche enregistrée ; /supprimer l'efface ; /source indique le passage utilisé. N'envoyez pas de document sensible.")
+            return Reply("Décrivez naturellement votre projet ou posez une question sur RDW. /guide présente les sujets du guide ; /faq affiche les réponses fréquentes ; /canal présente le canal VIP à 1 000 DA à vie. /reprendre reprend un échange ; /annuler le met en pause ; /humain prépare une demande Premium ; /mes_donnees montre la fiche enregistrée ; /supprimer l'efface ; /source indique le passage utilisé. N'envoyez un reçu qu'après avoir choisi le canal VIP.")
         if command == "/guide":
             return Reply(self.knowledge.guide_overview())
         if command == "/faq":
@@ -620,7 +687,7 @@ class ConversationService:
             s.stage = "private_channel_offer"
             return Reply(self._private_channel_offer(s), self._private_channel_buttons(s))
         if command == "/annuler":
-            if s.stage in {"last_name", "first_name", "contact_detail", "contact_confirm", "consent"}:
+            if s.stage in {"last_name", "first_name", "contact_detail", "contact_confirm", "consent"} | PREMIUM_FORM_STAGES:
                 s.last_name = s.first_name = s.contact_method = s.contact_detail = None
                 s.contact_confirmed = False
             s.stage = "paused"
@@ -653,10 +720,12 @@ class ConversationService:
         if command == "/source":
             return Reply(s.last_source or "Aucune réponse documentaire récente à citer.")
         if command == "/humain" or HUMAN.search(normalize(text)):
-            if s.stage in {"last_name", "first_name", "contact_detail", "contact_confirm", "consent"}:
+            if s.stage in {"last_name", "first_name", "contact_detail", "contact_confirm", "consent"} | PREMIUM_FORM_STAGES:
                 return Reply("Je peux enregistrer une demande de rappel après votre accord, mais je ne peux pas joindre directement un conseiller. " + self._stage_prompt(s))
-            s.stage = "offer_contact"
-            return self._contact_flow(s, user_id, update_id, "oui")
+            s.funnel_route = "consultation"
+            s.offer_status = "premium_interested"
+            s.stage = "premium_project"
+            return self._premium_start(s)
         if command.startswith("/"):
             return Reply("Commande inconnue. Utilisez /aide.")
         if not text or len(text) > 500:
@@ -712,6 +781,10 @@ class ConversationService:
             answered = self._answer_question(s, text)
             prompt = self._premium_start(s)
             return Reply(answered + "\n\n" + prompt.text, prompt.buttons)
+        if s.stage in PREMIUM_FORM_STAGES:
+            if self._looks_like_question(text):
+                return Reply(self._answer_question(s, text) + "\n\n" + self._premium_stage_prompt(s))
+            return self._premium_stage_reply(s, text)
         if s.stage == "vip_payment":
             if self._looks_like_question(text):
                 return Reply(self._answer_question(s, text) + "\n\n" + self._payment_instructions(s),
@@ -750,8 +823,9 @@ class ConversationService:
             if normalize(text) in YES:
                 s.offer_status = "private_channel_interested"
                 s.stage = "offer_contact"
-                return Reply("Très bien. L'accès au canal privé coûte 500 DA en paiement unique et reste valable à vie. Pendant ce test, notre équipe confirme manuellement le paiement et l'accès. Souhaitez-vous qu'un conseiller commercial vous transmette les modalités ?",
-                             [("Oui", "offer:yes"), ("Non merci", "offer:no")])
+                s.offer_status = "payment_instructions_shown"
+                s.stage = "vip_payment"
+                return Reply(self._payment_instructions(s), self._vip_payment_buttons(s))
             if normalize(text) in NO:
                 s.offer_status = "private_channel_declined"
                 s.stage = "idle"
@@ -920,27 +994,97 @@ class ConversationService:
     def _premium_pitch(self, s: Session) -> Reply:
         text = self._t(
             s,
-            ("Notre accompagnement Premium commence par l'étude de votre profil et de votre projet. Selon la prestation choisie, notre agence peut vous accompagner pour la langue, la préparation et la traduction du dossier, le CV, les lettres ciblées, les candidatures et la préparation aux entretiens. Les services exacts sont confirmés dans un devis adapté à votre situation.\n\n"
-             "Préférez-vous être accompagné par notre agence ou effectuer les démarches vous-même ?"),
-            ("تبدأ مرافقتنا المميزة بدراسة ملفكم ومشروعكم. حسب الخدمة المختارة، يمكن لوكالتنا مرافقتكم في اللغة، إعداد وترجمة الملف، السيرة الذاتية، رسائل التحفيز المخصصة، الترشحات والتحضير للمقابلات. يتم تأكيد الخدمات الدقيقة في عرض سعر يناسب حالتكم.\n\n"
-             "هل تفضلون مرافقة وكالتنا أم القيام بالإجراءات بأنفسكم؟"),
+            ("Deux voies sont possibles.\n\n"
+             "💎 Premium : notre agence prend en charge les étapes prévues au contrat, notamment la langue, la traduction et l'authentification du dossier, le CV et les lettres adaptés, les candidatures et la préparation aux entretiens. Nos équipes en Allemagne démarchent les recruteurs pour rechercher des entretiens. Après l'évaluation, les profils acceptés peuvent recevoir un contrat écrit « Satisfait ou Remboursé » ; ses conditions et les engagements exacts sont ceux du contrat signé.\n\n"
+             "🛠️ Solo : vous avancez à votre rythme avec l'Ebook et pouvez rejoindre notre canal communautaire pour recevoir davantage de ressources et d'aide.\n\n"
+             "Quelle voie souhaitez-vous choisir ?"),
+            ("لديكم مساران.\n\n"
+             "💎 المرافقة المميزة: تتولى وكالتنا المراحل المحددة في العقد، ومنها اللغة، ترجمة وتصديق الملف، السيرة الذاتية ورسائل التحفيز، الترشحات والتحضير للمقابلات. تتواصل فرقنا في ألمانيا مع جهات التوظيف للبحث عن مقابلات. بعد دراسة الملف، يمكن للملفات المقبولة الحصول على عقد مكتوب «راض أو مسترجع لأموالك»، وتبقى الشروط والالتزامات الدقيقة هي المكتوبة في العقد الموقع.\n\n"
+             "🛠️ المسار الفردي: تتقدمون بطريقتكم باستعمال الدليل ويمكنكم الانضمام إلى قناتنا للحصول على موارد ومساعدة إضافية.\n\n"
+             "أي مسار تختارون؟"),
         )
         return Reply(text, [
-            (self._t(s, "💎 Accompagnement Premium", "💎 المرافقة المميزة"), "funnel:premium"),
-            (self._t(s, "🛠️ Faire les démarches moi-même", "🛠️ أقوم بالإجراءات بنفسي"), "funnel:self"),
+            (self._t(s, "💎 Démarrer la procédure Premium", "💎 بدء المرافقة المميزة"), "funnel:premium"),
+            (self._t(s, "🛠️ Faire ma procédure tout seul", "🛠️ أقوم بالإجراءات بنفسي"), "funnel:self"),
         ])
 
     def _premium_start(self, s: Session) -> Reply:
         text = self._t(
             s,
-            (f"Très bien. Notre agence va d'abord comprendre votre projet, puis recueillir uniquement les informations utiles avec votre accord. Une consultation avec un conseiller commercial est indiquée à {self.consultation_price_dzd:,} DA ; les autres prestations font ensuite l'objet d'un devis. Quel projet préparez-vous ?").replace(",", " "),
-            (f"جيد. ستفهم وكالتنا مشروعكم أولا، ثم تجمع المعلومات الضرورية فقط بعد موافقتكم. سعر الاستشارة مع مستشار تجاري هو {self.consultation_price_dzd:,} دج، ثم تُحدد بقية الخدمات في عرض سعر. ما هو مشروعكم؟").replace(",", " "),
+            ("Très bien. Pour vérifier si votre profil peut entrer dans notre procédure Premium et quelles offres peuvent lui correspondre, je vais vous poser quelques questions courtes : identité, âge, diplôme et domaine, langues et expérience. Une fois le formulaire confirmé, notre équipe commerciale l'examinera et vous contactera pour planifier l'évaluation.\n\nQuel projet préparez-vous ?"),
+            ("جيد. للتحقق من ملاءمة ملفكم للمرافقة المميزة والعروض الممكنة، سأطرح أسئلة قصيرة عن الهوية والعمر والشهادة والتخصص واللغات والخبرة. بعد تأكيد الاستمارة، يدرسها الفريق التجاري ويتصل بكم لتحديد موعد التقييم.\n\nما هو مشروعكم؟"),
         )
         return Reply(text, [
             (self._t(s, "🎓 Études", "🎓 دراسة"), "project:etudes"),
             ("🛠 Ausbildung", "project:ausbildung"),
             (self._t(s, "💼 Emploi", "💼 عمل"), "project:emploi"),
         ])
+
+    def _premium_stage_prompt(self, s: Session) -> str:
+        prompts = {
+            "premium_last_name": self._t(s, "Quel est votre nom de famille ?", "ما هو لقبكم؟"),
+            "premium_first_name": self._t(s, "Quel est votre prénom ?", "ما هو اسمكم؟"),
+            "premium_age": self._t(s, "Quel âge avez-vous ?", "كم عمركم؟"),
+            "premium_degree": self._t(s, "Quel est votre dernier diplôme ou niveau d'études ?", "ما هي آخر شهادة أو مستوى دراسي لديكم؟"),
+            "premium_field": self._t(s, "Quel est votre domaine de formation ou le domaine visé en Allemagne ?", "ما هو تخصصكم أو المجال الذي تستهدفونه في ألمانيا؟"),
+            "premium_german": self._t(s, "Quel est votre niveau d'allemand ? Vous pouvez répondre « aucun » ou « je ne sais pas ».", "ما هو مستواكم في الألمانية؟ يمكنكم الإجابة: لا يوجد أو لا أعرف."),
+            "premium_english": self._t(s, "Quel est votre niveau d'anglais ? Vous pouvez répondre « aucun » ou « je ne sais pas ».", "ما هو مستواكم في الإنجليزية؟ يمكنكم الإجابة: لا يوجد أو لا أعرف."),
+            "premium_experience": self._t(s, "Quelle expérience professionnelle avez-vous ? Vous pouvez répondre « aucune ».", "ما هي خبرتكم المهنية؟ يمكنكم الإجابة: لا توجد."),
+        }
+        return prompts.get(s.stage, self._t(s, "Quelle précision souhaitez-vous ajouter ?", "ما هي المعلومة التي تريدون إضافتها؟"))
+
+    def _premium_stage_reply(self, s: Session, text: str) -> Reply:
+        answer = normalize(text)
+        name_pattern = r"[A-Za-zÀ-ÿ\u0600-\u06ff][A-Za-zÀ-ÿ\u0600-\u06ff' -]{1,79}"
+        if s.stage == "premium_last_name":
+            if any(char.isdigit() for char in text) or not re.fullmatch(name_pattern, text):
+                return Reply(self._t(s, "Indiquez seulement votre nom de famille.", "اكتبوا اللقب فقط."))
+            s.last_name = text.strip()
+            s.stage = "premium_first_name"
+            return Reply(self._premium_stage_prompt(s))
+        if s.stage == "premium_first_name":
+            if any(char.isdigit() for char in text) or not re.fullmatch(name_pattern, text):
+                return Reply(self._t(s, "Indiquez seulement votre prénom.", "اكتبوا الاسم فقط."))
+            s.first_name = text.strip()
+            s.stage = "premium_age"
+            return Reply(self._premium_stage_prompt(s))
+        if s.stage == "premium_age":
+            age = re.fullmatch(r"\s*(\d{1,2})(?:\s*ans?)?\s*", text, re.I)
+            if not age or not 14 <= int(age.group(1)) <= 99:
+                return Reply(self._t(s, "Indiquez votre âge en nombre, entre 14 et 99 ans.", "اكتبوا العمر رقما بين 14 و99 سنة."))
+            s.put("age", age.group(1))
+            s.stage = "premium_degree"
+            return Reply(self._premium_stage_prompt(s))
+        if s.stage == "premium_degree":
+            if not 1 < len(text) <= 120:
+                return Reply(self._premium_stage_prompt(s))
+            s.put("current_degree", text[:120])
+            s.stage = "premium_field"
+            return Reply(self._premium_stage_prompt(s))
+        if s.stage == "premium_field":
+            if not 1 < len(text) <= 120:
+                return Reply(self._premium_stage_prompt(s))
+            s.put("desired_field", text[:120])
+            s.stage = "premium_german"
+            return Reply(self._premium_stage_prompt(s))
+        if s.stage in {"premium_german", "premium_english"}:
+            slot = "german_level" if s.stage == "premium_german" else "english_level"
+            level = re.search(r"\b(A1|A2|B1|B2|C1|C2)\b", text, re.I)
+            no_level = answer in SKIP | {"aucun", "aucune", "debutant", "débutant", "لا يوجد", "لا أعرف"}
+            if not level and not no_level:
+                return Reply(self._t(s, "Répondez par A1, A2, B1, B2, C1, C2, « aucun » ou « je ne sais pas ».",
+                                     "أجيبوا بـ A1 أو A2 أو B1 أو B2 أو C1 أو C2 أو لا يوجد أو لا أعرف."))
+            s.put(slot, level.group(1).upper() if level else "aucun niveau déclaré")
+            s.stage = "premium_english" if s.stage == "premium_german" else "premium_experience"
+            return Reply(self._premium_stage_prompt(s))
+        if s.stage == "premium_experience":
+            if not 1 < len(text) <= 160:
+                return Reply(self._premium_stage_prompt(s))
+            s.put("experience", text[:160])
+            s.contact_method = "telephone"
+            s.stage = "contact_detail"
+            return Reply(self._stage_prompt(s))
+        return Reply(self._premium_stage_prompt(s))
 
     def _private_channel_buttons(self, s: Session) -> list[tuple[str, str]]:
         return [
@@ -952,10 +1096,20 @@ class ConversationService:
         price = f"{self.private_channel_price_dzd:,}".replace(",", " ")
         return self._t(
             s,
-            ("Vous pouvez avancer seul avec l'Ebook gratuit. Pour obtenir davantage de détails et éviter de rester bloqué, notre canal Telegram privé propose des informations complémentaires, des lives et un espace d'entraide. "
-             f"Nous proposons un accès à vie pour {price} DA, avec un paiement unique. Vous pourrez aussi demander ensuite un accompagnement Premium si nécessaire."),
-            ("يمكنكم التقدم بمفردكم باستعمال الدليل المجاني. للحصول على تفاصيل أكثر وتفادي التعطل، توفر قناة Telegram الخاصة معلومات إضافية وبثوثا مباشرة ومساحة للتعاون. "
-             f"سعر الدخول {price} دج بدفع واحد، والدخول صالح مدى الحياة. ويمكنكم لاحقا طلب المرافقة المميزة عند الحاجة."),
+            ("Vous pouvez avancer seul avec l'Ebook gratuit. Notre canal Telegram VIP vous aide à aller plus loin :\n\n"
+             "🎥 lives hebdomadaires avec questions/réponses ;\n"
+             "💼 contacts, sites d'offres et méthodes de candidature partagés par l'équipe ;\n"
+             "🗣️ séances de communication en allemand ;\n"
+             "🤝 entraide avec d'autres candidats ;\n"
+             "🔄 possibilité de passer ensuite au Premium si vous souhaitez nous confier la suite.\n\n"
+             f"L'accès coûte {price} DA une seule fois et reste valable à vie."),
+            ("يمكنكم التقدم بمفردكم باستعمال الدليل المجاني. تساعدكم قناة Telegram VIP بمحتوى إضافي:\n\n"
+             "🎥 لقاءات أسبوعية وأسئلة وأجوبة؛\n"
+             "💼 جهات اتصال ومواقع عروض وطرق الترشح؛\n"
+             "🗣️ حصص تواصل بالألمانية؛\n"
+             "🤝 تعاون مع مترشحين آخرين؛\n"
+             "🔄 إمكانية الانتقال لاحقا إلى المرافقة المميزة.\n\n"
+             f"سعر الدخول {price} دج مرة واحدة، والدخول صالح مدى الحياة."),
         )
 
     def _private_channel_teaser(self, s: Session) -> str:
@@ -967,7 +1121,7 @@ class ConversationService:
         )
 
     def _vip_payment_buttons(self, s: Session) -> list[tuple[str, str]]:
-        return [(self._t(s, "📞 Parler à un conseiller", "📞 التحدث مع مستشار"), "vip:consultant")]
+        return [(self._t(s, "💎 Voir l'accompagnement Premium", "💎 عرض المرافقة المميزة"), "vip:consultant")]
 
     def _payment_instructions(self, s: Session) -> str:
         price = f"{self.private_channel_price_dzd:,}".replace(",", " ")
@@ -980,22 +1134,23 @@ class ConversationService:
             details_fr = "\n".join(methods)
             details_ar = details_fr
         else:
-            details_fr = f"Demandez d'abord les coordonnées BaridiMob ou CCP au compte Telegram {self.payment_proof_telegram}."
-            details_ar = f"اطلبوا أولا معلومات BaridiMob أو CCP من حساب Telegram رقم {self.payment_proof_telegram}."
+            details_fr = ("Les coordonnées BaridiMob/CCP ne sont pas encore configurées dans le bot. "
+                          f"Demandez-les au support RDW : {self.payment_proof_telegram}.")
+            details_ar = ("لم يتم إعداد معلومات BaridiMob/CCP في البوت بعد. "
+                          f"اطلبوها من دعم RDW: {self.payment_proof_telegram}.")
         return self._t(
             s,
             (f"L'accès VIP coûte {price} DA, en paiement unique pour un accès à vie.\n\n{details_fr}\n\n"
-             f"Après le paiement, envoyez la preuve au compte Telegram {self.payment_proof_telegram}. L'administrateur vérifiera le paiement manuellement puis vous ajoutera au canal. Le bot ne valide aucune capture ni aucun paiement."),
+             f"Après le versement de {price} DA, envoyez ici la photo ou le PDF du reçu. Le bot le transmettra aux administrateurs sans le valider automatiquement. Après vérification, vous recevrez un lien personnel utilisable une seule fois pour rejoindre le canal VIP."),
             (f"سعر الدخول إلى قناة VIP هو {price} دج، بدفع واحد ودخول مدى الحياة.\n\n{details_ar}\n\n"
-             f"بعد الدفع، أرسلوا الإثبات إلى حساب Telegram رقم {self.payment_proof_telegram}. سيتحقق المسؤول من الدفع يدويا ثم يضيفكم إلى القناة. البوت لا يؤكد أي صورة أو دفع."),
+             f"بعد دفع {price} دج، أرسلوا هنا صورة الوصل أو ملف PDF. سيرسله البوت إلى المسؤولين دون تأكيد آلي. بعد التحقق، يصلكم رابط شخصي يستعمل مرة واحدة للانضمام إلى قناة VIP."),
         )
 
     def _consent_text(self, s: Session) -> str:
         if s.language != "ar":
             return CONSENT_TEXT
-        return ("بموافقتكم، تسجل RDW الاسم واللقب والمشروع والمعلومات التي صرحتم بها ورقم الهاتف المؤكد، "
-                "حتى يدرس الفريق الطلب ويتصل بكم. يمكنكم طلب الحذف باستعمال /supprimer. "
-                "النص الفرنسي أدناه هو النص المرجعي لهذه الموافقة:\n\n" + CONSENT_TEXT)
+        return ("بموافقتكم، تسجل RDW معلومات الاستمارة ورقم الهاتف المؤكد لكي يدرس الفريق التجاري طلب المرافقة المميزة ويتصل بكم. "
+                "يمكنكم مشاهدة البيانات عبر /mes_donnees وطلب حذفها عبر /supprimer. هل توافقون؟")
 
     def _welcome(self, s: Session) -> str:
         return self._t(
@@ -1071,6 +1226,13 @@ class ConversationService:
             s.last_topic = "guide_overview"
             return self._t(s, self.knowledge.guide_overview(),
                            "يشرح دليل RDW الدراسة وAusbildung والعمل، وطريقة المرافقة، واللغة الألمانية، والسيرة الذاتية، ورسائل التحفيز، والوثائق، والاستشارة، والأسعار المذكورة، والاستقرار وحدود الضمانات والقبول والتأشيرة.")
+        if topic == "tarifs":
+            s.last_topic = "tarifs"
+            return self._t(
+                s,
+                "Aucun paiement de consultation n'est demandé dans le bot. Si vous choisissez la voie Premium, notre équipe étudie d'abord le formulaire puis vous présente le contrat et le devis correspondant. Le canal VIP pour les démarches en autonomie coûte 1 000 DA, en paiement unique avec accès à vie.",
+                "لا يطلب البوت دفعا مقابل استشارة التقييم. عند اختيار المسار المميز، يدرس الفريق الاستمارة أولا ثم يقدم العقد وعرض السعر المناسب. سعر قناة VIP للمسار الفردي هو 1000 دج بدفع واحد ودخول مدى الحياة.",
+            )
         p = self.knowledge.by_id[topic]
         s.last_source = p["citation"]
         s.last_topic = topic
@@ -1121,6 +1283,8 @@ class ConversationService:
         return prompts
 
     def _stage_prompt(self, s: Session) -> str:
+        if s.stage in PREMIUM_FORM_STAGES:
+            return self._premium_stage_prompt(s)
         if s.current_slot and s.primary and s.stage not in {"last_name", "first_name", "contact_detail", "contact_confirm", "consent"}:
             return next((prompt for slot, prompt in self._prompts(s) if slot == s.current_slot), "Quelle précision souhaitez-vous ajouter ?")
         if s.language == "ar":
@@ -1214,7 +1378,7 @@ class ConversationService:
             if s.primary == "emploi" and s.value("current_degree"):
                 base += f", avec une qualification déclarée : {s.value('current_degree')}"
         details = []
-        for key, label in (("german_level", "allemand"), ("english_level", "anglais"), ("experience", "expérience"),
+        for key, label in (("age", "âge"), ("german_level", "allemand"), ("english_level", "anglais"), ("experience", "expérience"),
                            ("timeline", "période"), ("country", "résidence")):
             if s.value(key):
                 value = s.value(key)
@@ -1229,10 +1393,9 @@ class ConversationService:
             if answer in YES:
                 s.stage = "offer_contact"
                 s.funnel_route = "consultation"
-                price = f"{self.consultation_price_dzd:,}".replace(",", " ")
                 return Reply(self._t(s,
-                                     f"La consultation RDW est indiquée à {price} DA. Souhaitez-vous que j'enregistre votre demande afin que l'équipe examine votre projet ?",
-                                     f"سعر استشارة RDW هو {price} دج. هل تريدون أن أسجل طلبكم حتى يدرس الفريق مشروعكم؟"),
+                                     "Souhaitez-vous passer à la voie Premium et enregistrer ce profil afin que notre équipe commerciale l'examine ? Aucun paiement de consultation n'est demandé dans le bot.",
+                                     "هل تريدون الانتقال إلى المسار المميز وتسجيل هذا الملف لكي يدرسه الفريق التجاري؟ لا يطلب البوت دفعا مقابل الاستشارة."),
                              [(self._t(s, "Oui", "نعم"), "offer:yes"),
                               (self._t(s, "Non merci", "لا شكرا"), "offer:no")])
             tracks, facts, _ = extract_declared(text)
@@ -1323,7 +1486,9 @@ class ConversationService:
             s.offer_status = requested_offer
             if s.funnel_route == "private_channel":
                 return Reply("Votre demande d'accès au canal privé est enregistrée pour l'équipe RDW. Aucun paiement n'est validé par le bot ; l'équipe doit encore vous transmettre et confirmer les modalités. /mes_donnees permet de voir la fiche ; /supprimer permet de l'effacer.")
-            return Reply("Votre demande de consultation est enregistrée pour l'équipe RDW. Aucun paiement n'est validé par le bot et je ne peux pas encore confirmer un créneau. /mes_donnees permet de voir la fiche ; /supprimer permet de l'effacer.")
+            return Reply(self._t(s,
+                                 "Votre formulaire Premium est enregistré. Notre équipe commerciale va l'examiner avant de vous contacter pour planifier l'évaluation. Aucun créneau ni résultat n'est encore confirmé. /mes_donnees permet de voir la fiche ; /supprimer permet de l'effacer.",
+                                 "تم تسجيل استمارة المرافقة المميزة. سيدرسها الفريق التجاري قبل الاتصال بكم لتحديد موعد التقييم. لم يتم بعد تأكيد موعد أو نتيجة. يمكنكم عرض البيانات عبر /mes_donnees وحذفها عبر /supprimer."))
         return Reply("Je n'ai pas compris. Vous pouvez utiliser /aide.")
 
     def _contact_flow(self, s: Session, user_id: int, update_id: int, text: str) -> Reply:

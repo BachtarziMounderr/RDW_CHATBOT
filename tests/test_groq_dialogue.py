@@ -281,7 +281,7 @@ def test_invalid_groq_output_is_visibly_tagged_as_rag_in_test_mode(tmp_path):
     assert answer.startswith("Réponse RAG :")
 
 
-def test_short_darija_price_request_is_groq_with_agency_voice_and_soft_orientation(tmp_path):
+def test_short_darija_price_request_uses_current_local_policy(tmp_path):
     limits = GeminiLimits()
     usage = UsageLimit(tmp_path / "usage.json", limits,
                        clock=lambda: datetime(2026, 10, 13, tzinfo=timezone.utc))
@@ -296,13 +296,9 @@ def test_short_darija_price_request_is_groq_with_agency_voice_and_soft_orientati
 
     answer = bot.handle(77, 1, "prix le3ziz").text
 
-    assert answer.startswith("Réponse Groq :")
-    assert "notre agence" in answer and "conseiller commercial" in answer
-    prompt = transport.prompts[0]
-    assert prompt["message_kind"] == "question"
-    assert prompt["intent"] == ["tarifs"]
-    assert prompt["orientation"]["goal"] == "agency_consultation"
-    assert prompt["may_ask_one_question"] is True
+    assert answer.startswith("Réponse RAG :")
+    assert "Aucun paiement de consultation" in answer and "1 000 DA" in answer
+    assert transport.prompts == []
 
 
 def test_repeated_practical_questions_trigger_private_channel_goal(tmp_path):
@@ -317,7 +313,7 @@ def test_repeated_practical_questions_trigger_private_channel_goal(tmp_path):
         json.dumps({
             "answer": ("Pour un master, le niveau demandé dépend du programme et doit être vérifié. "
                        "Pour approfondir vos démarches, notre canal Telegram privé propose des informations complémentaires "
-                       "et des lives, avec un accès à vie pour un paiement unique de 500 DA. "
+                       "et des lives, avec un accès à vie pour un paiement unique de 1 000 DA. "
                        "Écrivez /canal pour recevoir les modalités."),
             "passage_ids": ["langue"],
         }, ensure_ascii=False),
@@ -330,7 +326,7 @@ def test_repeated_practical_questions_trigger_private_channel_goal(tmp_path):
 
     assert first.startswith("Réponse Groq :") and "canal" not in first.lower()
     assert second.startswith("Réponse Groq :")
-    assert all(item in second for item in ("500 DA", "accès à vie", "lives", "/canal"))
+    assert all(item in second for item in ("1 000 DA", "accès à vie", "lives", "/canal"))
     assert "Quelle formation souhaitez-vous" not in second
     assert "dernier diplôme" in second
     assert transport.prompts[1]["orientation"]["goal"] == "private_channel"
