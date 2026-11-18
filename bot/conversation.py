@@ -606,10 +606,16 @@ class ConversationService:
                 s.stage = "vip_payment"
                 return Reply(self._payment_instructions(s), self._vip_payment_buttons(s))
             if value == "vip:consultant":
-                s.funnel_route = "consultation"
-                s.offer_status = "premium_interested"
-                s.stage = "premium_project"
-                return self._premium_start(s)
+                # Compatibilité avec d'anciens messages Telegram qui affichaient ce
+                # bouton. La voie Solo ne donne plus un accès direct à un conseiller.
+                s.funnel_route = "private_channel"
+                s.offer_status = "private_channel_presented"
+                s.stage = "private_channel_offer"
+                return Reply(self._t(
+                    s,
+                    "La procédure Solo ne comprend pas de mise en relation avec un conseiller. Voici les avantages du canal VIP :",
+                    "المسار الفردي لا يتضمن التواصل مع مستشار. إليكم مزايا قناة VIP:",
+                ) + "\n\n" + self._private_channel_offer(s), self._private_channel_buttons(s))
             if value.startswith("project:"):
                 track = value.partition(":")[2]
                 if track not in SUPPORTED_TRACKS:
@@ -1068,8 +1074,11 @@ class ConversationService:
 
     def _private_channel_buttons(self, s: Session) -> list[tuple[str, str]]:
         return [
-            (self._t(s, "🚀 Rejoindre le canal VIP", "🚀 الانضمام إلى قناة VIP"), "vip:join"),
-            (self._t(s, "📞 Parler à un conseiller", "📞 التحدث مع مستشار"), "vip:consultant"),
+            (self._t(
+                s,
+                "🚀 Rejoindre le canal VIP (1 000 DA à vie)",
+                "🚀 الانضمام إلى قناة VIP (1000 دج مدى الحياة)",
+            ), "vip:join"),
         ]
 
     def _private_channel_offer(self, s: Session) -> str:
@@ -1101,7 +1110,7 @@ class ConversationService:
         )
 
     def _vip_payment_buttons(self, s: Session) -> list[tuple[str, str]]:
-        return [(self._t(s, "💎 Voir l'accompagnement Premium", "💎 عرض المرافقة المميزة"), "vip:consultant")]
+        return []
 
     def _payment_instructions(self, s: Session) -> str:
         price = f"{self.private_channel_price_dzd:,}".replace(",", " ")

@@ -79,11 +79,28 @@ def test_strict_funnel_reaches_premium_and_vip_payment_paths():
     vip.send("ebook:continue", callback=True)
     offer = vip.send("funnel:self", callback=True)
     assert "1 000 DA" in offer.text and "valable à vie" in offer.text
+    assert offer.buttons == [("🚀 Rejoindre le canal VIP (1 000 DA à vie)", "vip:join")]
     payment = vip.send("vip:join", callback=True)
     assert "BaridiMob" in payment.text and "CCP" in payment.text
     assert "0541501832" in payment.text
     assert "compte Telegram associé au numéro" in payment.text
     assert "ajoutera manuellement" in payment.text
+    assert payment.buttons == []
+
+
+def test_old_solo_consultant_button_no_longer_opens_the_premium_form():
+    d = Dialog()
+    d.send("/start")
+    d.send("lang:fr", callback=True)
+    d.send("ebook:continue", callback=True)
+    d.send("funnel:self", callback=True)
+
+    reply = d.send("vip:consultant", callback=True)
+
+    assert "ne comprend pas de mise en relation avec un conseiller" in reply.text
+    assert reply.buttons == [("🚀 Rejoindre le canal VIP (1 000 DA à vie)", "vip:join")]
+    assert d.bot.sessions[42].stage == "private_channel_offer"
+    assert d.bot.sessions[42].funnel_route == "private_channel"
 
 
 def test_question_during_tunnel_is_answered_then_same_step_resumes():
