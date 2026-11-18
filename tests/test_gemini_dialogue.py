@@ -52,18 +52,19 @@ def test_gemini_writes_grounded_answer_and_python_keeps_next_question(tmp_path):
 def test_short_telegram_exchange_calls_gemini_on_each_eligible_turn(tmp_path):
     composer, fake, _ = setup(
         tmp_path,
-        response("Bonjour ! Nous pouvons vous renseigner sur votre projet vers l'Allemagne.", "mission"),
+        response("RDW accompagne des projets vers l'Allemagne en lien avec Virtulingo.", "mission"),
         response("RDW accompagne des projets vers l'Allemagne en lien avec Virtulingo.", "mission"),
         response("Pour les études, RDW analyse le profil et prépare le dossier.", "etudes"),
     )
     bot = ConversationService(MemoryLeadStore(), composer=composer)
+    bot.sessions[77] = Session(language="fr", stage="explore")
     answers = [bot.handle(77, index, message).text for index, message in
-               enumerate(("slm", "oui", "etude"), 1)]
-    assert answers[0].startswith("Bonjour ! Nous pouvons")
+               enumerate(("comment pouvez-vous m'aider ?", "quels services proposez-vous ?", "je veux faire des études"), 1)]
+    assert answers[0].startswith("RDW accompagne")
     assert answers[1].startswith("RDW accompagne")
     assert answers[2].startswith("Pour les études")
     assert "Quelle formation souhaitez-vous suivre" in answers[-1]
-    assert [prompt["message_kind"] for prompt in fake.prompts] == ["salutation", "affirmation", "declaration_de_projet"]
+    assert [prompt["message_kind"] for prompt in fake.prompts] == ["question", "question", "declaration_de_projet"]
     assert [prompt["intent"] for prompt in fake.prompts] == [["mission"], ["mission"], ["etudes"]]
     assert bot.sessions[77].primary == "etudes"
 
@@ -72,9 +73,12 @@ def test_natural_gemini_greetings_and_alo_are_accepted(tmp_path):
     natural = "Bonjour et bienvenue ! Je suis ravi de vous accueillir chez RDW et de vous accompagner dans votre projet."
     composer, fake, _ = setup(tmp_path, response(natural, "mission"), response(natural, "mission"))
     bot = ConversationService(MemoryLeadStore(), composer=composer)
-    assert bot.handle(77, 1, "bonjour").text.startswith("Bonjour et bienvenue !")
-    assert bot.handle(77, 2, "alo").text.startswith("Bonjour et bienvenue !")
-    assert [prompt["message_kind"] for prompt in fake.prompts] == ["salutation", "salutation"]
+    first = bot.handle(77, 1, "bonjour")
+    second = bot.handle(77, 2, "alo")
+    assert first.text.startswith("Bonjour et bienvenue chez RDW")
+    assert second.text.startswith("Bonjour et bienvenue chez RDW")
+    assert first.followup_text == "Choisissez votre langue / اختر لغتك :"
+    assert fake.prompts == []
 
 
 def test_safe_social_greeting_may_have_no_documentary_source():

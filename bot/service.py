@@ -19,6 +19,8 @@ class Reply:
     buttons: list[tuple[str, str]] | None = None
     document_path: str | None = None
     payment_id: int | None = None
+    messages_before: list[str] | None = None
+    followup_text: str | None = None
 
 
 MENU = [("🎓 Études", "track:etudes"), ("🛠 Ausbildung", "track:ausbildung"),

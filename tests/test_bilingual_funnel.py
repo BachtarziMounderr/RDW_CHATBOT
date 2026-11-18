@@ -22,12 +22,41 @@ class Dialog:
 def test_start_language_choice_then_sends_original_ebook():
     d = Dialog()
     welcome = d.send("/start")
+    assert welcome.text.startswith("Bonjour et bienvenue chez RDW")
+    assert welcome.followup_text == "Choisissez votre langue / اختر لغتك :"
     assert welcome.buttons == [("🇫🇷 Français", "lang:fr"), ("🇩🇿 العربية", "lang:ar")]
 
     ebook = d.send("lang:fr", callback=True)
     assert ebook.buttons[0][1] == "ebook:continue"
+    assert "continuez ici" in ebook.followup_text
     assert Path(ebook.document_path).is_file()
     assert Path(ebook.document_path).stat().st_size > 2_000_000
+
+
+def test_greeting_never_replays_payment_details_from_a_saved_vip_stage():
+    state_store = MemoryKnowledgeStore()
+    state_store.save_funnel_state(42, {
+        "language": "fr",
+        "stage": "vip_payment",
+        "lead_source": "direct",
+        "funnel_route": "private_channel",
+        "offer_status": "payment_instructions_shown",
+        "private_channel_presented": True,
+    })
+    d = Dialog(
+        review_store=state_store,
+        baridimob_payment_details="00799999000123456789",
+        ccp_payment_details="12345678 clé 90",
+    )
+
+    reply = d.send("bonjour\\")
+
+    combined = "\n".join((reply.messages_before or []) + [reply.text])
+    assert "BaridiMob" not in combined
+    assert "CCP" not in combined
+    assert "paiement" not in combined.casefold()
+    assert {value for _, value in reply.buttons} == {"funnel:premium", "funnel:self"}
+    assert d.bot.sessions[42].stage == "premium_choice"
 
 
 def test_strict_funnel_reaches_premium_and_vip_payment_paths():

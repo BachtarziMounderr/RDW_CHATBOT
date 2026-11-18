@@ -237,10 +237,6 @@ def test_test_headers_distinguish_groq_from_rag_and_dialogue_answers_first(tmp_p
                        clock=lambda: datetime(2026, 10, 13, tzinfo=timezone.utc))
     transport = FakeTransport([
         json.dumps({
-            "answer": "Bonjour ! Nous pouvons vous renseigner sur votre projet vers l'Allemagne.",
-            "passage_ids": ["mission"],
-        }, ensure_ascii=False),
-        json.dumps({
             "answer": "RDW analyse votre profil et vous accompagne dans les démarches adaptées à votre projet.",
             "passage_ids": ["mission"],
         }, ensure_ascii=False),
@@ -256,7 +252,9 @@ def test_test_headers_distinguish_groq_from_rag_and_dialogue_answers_first(tmp_p
     composer = GroqDialogue("", "qwen/qwen3.8-27b", limits, usage, transport=transport)
     bot = ConversationService(MemoryLeadStore(), composer=composer, debug_source_labels=True)
 
-    assert bot.handle(77, 1, "bonjour").text.startswith("Réponse Groq :")
+    greeting = bot.handle(77, 1, "bonjour")
+    assert greeting.text.startswith("Réponse RAG :\nBonjour et bienvenue chez RDW")
+    assert greeting.followup_text == "Choisissez votre langue / اختر لغتك :"
     assert bot.handle(77, 2, "comment pouvez vous maider ?").text.startswith("Réponse Groq :")
     documents = bot.handle(77, 3, "vous faites les dossiers traduction etc ?").text
     assert documents.startswith("Réponse Groq :") and "traduction" in documents
@@ -265,7 +263,7 @@ def test_test_headers_distinguish_groq_from_rag_and_dialogue_answers_first(tmp_p
     assert "Souhaitez-vous surtout" not in consultation
     repair = bot.handle(77, 5, "tu ne reponds pas a mes questions").text
     assert repair.startswith("Réponse RAG :") and "Reformulez simplement" in repair
-    assert [p["intent"] for p in transport.prompts] == [["mission"], ["mission"], ["documents"], ["consultation"]]
+    assert [p["intent"] for p in transport.prompts] == [["mission"], ["documents"], ["consultation"]]
 
 
 def test_invalid_groq_output_is_visibly_tagged_as_rag_in_test_mode(tmp_path):
