@@ -519,14 +519,7 @@ class ConversationService:
     def _with_source_label(self, reply: Reply | None, source: str) -> Reply | None:
         if not reply or not self.debug_source_labels:
             return reply
-        return Reply(
-            f"Réponse {source} :\n{reply.text}",
-            reply.buttons,
-            reply.document_path,
-            reply.payment_id,
-            reply.messages_before,
-            reply.followup_text,
-        )
+        return Reply(f"Réponse {source} :\n{reply.text}", reply.buttons, reply.document_path, reply.payment_id)
 
     def _should_suggest_private_channel(self, session: Session, topic: str | None,
                                         text: str, repeated: bool) -> bool:
@@ -638,7 +631,7 @@ class ConversationService:
         if command == "/start":
             source = "canal_gratuit" if len(text.split()) > 1 and normalize(text.split(maxsplit=1)[1]) == "canal_gratuit" else "direct"
             self.sessions[user_id] = Session(updated_at=now, lead_source=source, stage="language_choice")
-            return self._language_choice_reply()
+            return Reply(self._language_welcome(), [("🇫🇷 Français", "lang:fr"), ("🇩🇿 العربية", "lang:ar")])
         if command == "/aide":
             return Reply("Décrivez naturellement votre projet ou posez une question sur RDW. /guide présente les sujets du guide ; /faq affiche les réponses fréquentes ; /canal présente le canal VIP à 1 000 DA à vie. /reprendre reprend un échange ; /annuler le met en pause ; /humain prépare une demande Premium ; /mes_donnees montre la fiche enregistrée ; /supprimer l'efface ; /source indique le passage utilisé. La preuve de paiement doit être envoyée au contact indiqué dans /canal.")
         if command == "/guide":
@@ -721,36 +714,17 @@ class ConversationService:
                 "نعم، بالطبع. يمكنكم طرح كل أسئلتكم حول الدليل أو وكالتنا أو إجراءاتكم نحو ألمانيا. سأجيب أولا، ثم نعود إلى المرحلة التي توقفنا عندها.",
             ))
         if GREETING.match(text):
-            if s.stage == "language_choice":
-                return self._language_choice_reply()
-            if s.stage == "paused":
-                return Reply("Bonjour ! Votre projet est en pause. Utilisez /reprendre pour le poursuivre ou /start pour commencer un nouveau projet.")
-            if s.stage == "idle":
-                s.stage = "language_choice"
-                return self._language_choice_reply()
-            if s.stage in {"ebook_wait", "premium_choice", "private_channel_offer", "vip_payment"}:
-                # Un simple salut ne doit jamais afficher des coordonnées de paiement.
-                # On revient au choix des deux voies, sans perdre la langue choisie.
-                s.stage = "premium_choice"
-                s.funnel_route = None
-                s.offer_status = None
-                pitch = self._premium_pitch(s)
-                return Reply(
-                    self._t(
-                        s,
-                        "Que souhaitez-vous faire maintenant ?",
-                        "ماذا تريدون أن تفعلوا الآن؟",
-                    ),
-                    pitch.buttons,
-                    messages_before=[self._t(
-                        s,
-                        ("Bonjour et bienvenue chez RDW ! Je peux répondre à vos questions sur "
-                         "l'Ebook, notre agence et les démarches vers l'Allemagne."),
-                        ("مرحبا بكم في RDW! يمكنني الإجابة عن أسئلتكم حول الدليل ووكالتنا "
-                         "والإجراءات نحو ألمانيا."),
-                    ), pitch.text],
-                )
-            return Reply(self._welcome(s) if s.stage == "idle" else self._t(s, "Bonjour ! ", "مرحبا! ") + self._stage_prompt(s))
+            # Un salut démarre toujours le tunnel public depuis le début. Cela évite
+            # qu'un ancien état VIP ou Premium réaffiche une étape avancée sans contexte.
+            self.sessions[user_id] = Session(
+                updated_at=now,
+                lead_source=s.lead_source or "direct",
+                stage="language_choice",
+            )
+            return Reply(
+                self._language_welcome(),
+                [("🇫🇷 Français", "lang:fr"), ("🇩🇿 العربية", "lang:ar")],
+            )
         if THANKS.match(text):
             if s.stage == "paused":
                 return Reply("Avec plaisir. Utilisez /reprendre si vous souhaitez continuer votre projet.")
@@ -984,15 +958,9 @@ class ConversationService:
         return ("Bonjour et bienvenue chez RDW ! Je suis l'assistant virtuel de notre agence. "
                 "Avec Virtulingo, nous accompagnons les projets vers l'Allemagne : études, Ausbildung ou emploi. "
                 "Je vais vous envoyer notre guide Ebook gratuit, répondre à vos questions et préparer votre demande si vous souhaitez avancer avec nous. "
-                "Après avoir choisi votre langue, que souhaitez-vous savoir ou préparer ?\n\n"
-                "مرحبا بكم في RDW! سأرسل لكم دليلنا المجاني وأساعدكم في اختيار الحل المناسب لمشروعكم نحو ألمانيا.")
-
-    def _language_choice_reply(self) -> Reply:
-        return Reply(
-            self._language_welcome(),
-            [("🇫🇷 Français", "lang:fr"), ("🇩🇿 العربية", "lang:ar")],
-            followup_text="Choisissez votre langue / اختر لغتك :",
-        )
+                "Que souhaitez-vous savoir ou préparer ? Vous pourrez me le dire après avoir choisi votre langue.\n\n"
+                "مرحبا بكم في RDW! سأرسل لكم دليلنا المجاني وأساعدكم في اختيار الحل المناسب لمشروعكم نحو ألمانيا.\n\n"
+                "Choisissez votre langue / اختر لغتك :")
 
     def _ebook_delivery(self, s: Session) -> Reply:
         text = self._t(
@@ -1001,12 +969,7 @@ class ConversationService:
             "إليكم دليل RDW المجاني. يشرح أهم المسارات نحو ألمانيا والإجراءات وخدمات وكالتنا. اطلعوا عليه ثم واصلوا عندما تكونون مستعدين.",
         )
         button = self._t(s, "📖 J'ai lu l'Ebook / Continuer", "📖 قرأت الدليل / متابعة")
-        followup = self._t(
-            s,
-            "Lorsque vous avez consulté l'Ebook, continuez ici :",
-            "بعد الاطلاع على الدليل، واصلوا من هنا:",
-        )
-        return Reply(text, [(button, "ebook:continue")], str(EBOOK_PATH), followup_text=followup)
+        return Reply(text, [(button, "ebook:continue")], str(EBOOK_PATH))
 
     def _premium_pitch(self, s: Session) -> Reply:
         text = self._t(

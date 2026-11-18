@@ -22,23 +22,20 @@ class Dialog:
 def test_start_language_choice_then_sends_original_ebook():
     d = Dialog()
     welcome = d.send("/start")
-    assert welcome.text.startswith("Bonjour et bienvenue chez RDW")
-    assert welcome.followup_text == "Choisissez votre langue / اختر لغتك :"
     assert welcome.buttons == [("🇫🇷 Français", "lang:fr"), ("🇩🇿 العربية", "lang:ar")]
 
     ebook = d.send("lang:fr", callback=True)
     assert ebook.buttons[0][1] == "ebook:continue"
-    assert "continuez ici" in ebook.followup_text
     assert Path(ebook.document_path).is_file()
     assert Path(ebook.document_path).stat().st_size > 2_000_000
 
 
-def test_greeting_never_replays_payment_details_from_a_saved_vip_stage():
+def test_greeting_restarts_the_complete_tree_even_from_a_saved_vip_stage():
     state_store = MemoryKnowledgeStore()
     state_store.save_funnel_state(42, {
         "language": "fr",
         "stage": "vip_payment",
-        "lead_source": "direct",
+        "lead_source": "canal_gratuit",
         "funnel_route": "private_channel",
         "offer_status": "payment_instructions_shown",
         "private_channel_presented": True,
@@ -49,14 +46,21 @@ def test_greeting_never_replays_payment_details_from_a_saved_vip_stage():
         ccp_payment_details="12345678 clé 90",
     )
 
-    reply = d.send("bonjour\\")
+    welcome = d.send("bonjour\\")
+    assert "Bonjour et bienvenue chez RDW" in welcome.text
+    assert "BaridiMob" not in welcome.text and "CCP" not in welcome.text
+    assert {value for _, value in welcome.buttons} == {"lang:fr", "lang:ar"}
+    assert d.bot.sessions[42].stage == "language_choice"
+    assert d.bot.sessions[42].lead_source == "canal_gratuit"
 
-    combined = "\n".join((reply.messages_before or []) + [reply.text])
-    assert "BaridiMob" not in combined
-    assert "CCP" not in combined
-    assert "paiement" not in combined.casefold()
-    assert {value for _, value in reply.buttons} == {"funnel:premium", "funnel:self"}
-    assert d.bot.sessions[42].stage == "premium_choice"
+    ebook = d.send("lang:fr", callback=True)
+    assert ebook.document_path and ebook.buttons[0][1] == "ebook:continue"
+    choices = d.send("ebook:continue", callback=True)
+    assert {value for _, value in choices.buttons} == {"funnel:premium", "funnel:self"}
+    project = d.send("funnel:premium", callback=True)
+    assert {value for _, value in project.buttons} == {
+        "project:etudes", "project:ausbildung", "project:emploi",
+    }
 
 
 def test_strict_funnel_reaches_premium_and_vip_payment_paths():

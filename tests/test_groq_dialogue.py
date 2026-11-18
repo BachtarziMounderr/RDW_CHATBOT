@@ -254,7 +254,7 @@ def test_test_headers_distinguish_groq_from_rag_and_dialogue_answers_first(tmp_p
 
     greeting = bot.handle(77, 1, "bonjour")
     assert greeting.text.startswith("Réponse RAG :\nBonjour et bienvenue chez RDW")
-    assert greeting.followup_text == "Choisissez votre langue / اختر لغتك :"
+    assert {value for _, value in greeting.buttons} == {"lang:fr", "lang:ar"}
     assert bot.handle(77, 2, "comment pouvez vous maider ?").text.startswith("Réponse Groq :")
     documents = bot.handle(77, 3, "vous faites les dossiers traduction etc ?").text
     assert documents.startswith("Réponse Groq :") and "traduction" in documents

@@ -77,7 +77,7 @@ def test_natural_gemini_greetings_and_alo_are_accepted(tmp_path):
     second = bot.handle(77, 2, "alo")
     assert first.text.startswith("Bonjour et bienvenue chez RDW")
     assert second.text.startswith("Bonjour et bienvenue chez RDW")
-    assert first.followup_text == "Choisissez votre langue / اختر لغتك :"
+    assert {value for _, value in first.buttons} == {"lang:fr", "lang:ar"}
     assert fake.prompts == []
 
 

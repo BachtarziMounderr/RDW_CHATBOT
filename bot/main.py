@@ -372,8 +372,6 @@ async def dispatch(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except Exception:
                 LOG.error("Historique volontaire indisponible")
                 reply.text += "\n\nL'historique n'a pas pu être enregistré pour ce message."
-        for message in reply.messages_before or []:
-            await context.bot.send_message(update.effective_chat.id, message)
         if reply.document_path:
             document_path = Path(reply.document_path)
             if not document_path.is_file():
@@ -381,7 +379,7 @@ async def dispatch(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await context.bot.send_message(
                     update.effective_chat.id,
                     "L'Ebook RDW est momentanément indisponible. Réessayez avec /start.",
-                    reply_markup=None if reply.followup_text else keyboard(reply.buttons),
+                    reply_markup=keyboard(reply.buttons),
                 )
             else:
                 with document_path.open("rb") as document:
@@ -390,26 +388,10 @@ async def dispatch(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         document=document,
                         filename=document_path.name,
                         caption=reply.text,
-                        reply_markup=None if reply.followup_text else keyboard(reply.buttons),
+                        reply_markup=keyboard(reply.buttons),
                     )
-            if reply.followup_text:
-                await context.bot.send_message(
-                    update.effective_chat.id,
-                    reply.followup_text,
-                    reply_markup=keyboard(reply.buttons),
-                )
         else:
-            await context.bot.send_message(
-                update.effective_chat.id,
-                reply.text,
-                reply_markup=None if reply.followup_text else keyboard(reply.buttons),
-            )
-            if reply.followup_text:
-                await context.bot.send_message(
-                    update.effective_chat.id,
-                    reply.followup_text,
-                    reply_markup=keyboard(reply.buttons),
-                )
+            await context.bot.send_message(update.effective_chat.id, reply.text, reply_markup=keyboard(reply.buttons))
         if access_restricted:
             record_exchange("id" if command == "/id" else "authorized")
         await flush_review_notifications(context.application)
