@@ -19,6 +19,7 @@ from psycopg.rows import dict_row
 
 LOG = logging.getLogger("rdw.dashboard")
 STATIC_ROOT = Path(__file__).resolve().parents[1] / "dashboard"
+RELEASE_MARKER = "strict-funnel-2026-11-18"
 TRACKS = (
     ("etudes", "Études"),
     ("emploi", "Emploi"),
@@ -174,7 +175,8 @@ def _handler(database_url: str, username: str = "", password: str = "", health_r
             if path == "/health":
                 ready = True if health_ready is None else bool(health_ready())
                 status = 200 if ready else 503
-                body = b'{"status":"ok"}' if ready else b'{"status":"starting"}'
+                state = "ok" if ready else "starting"
+                body = json.dumps({"status": state, "release": RELEASE_MARKER}).encode("utf-8")
                 self._send(status, body, "application/json; charset=utf-8")
                 return
             if not self._authorized():

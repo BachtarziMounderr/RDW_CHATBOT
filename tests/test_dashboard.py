@@ -1,4 +1,5 @@
 import base64
+import json
 from datetime import datetime, timedelta, timezone
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
@@ -71,6 +72,9 @@ def test_hosted_dashboard_requires_authentication_but_health_stays_public():
         readiness["ready"] = True
         with urlopen(base + "/health", timeout=2) as response:
             assert response.status == 200
+            assert json.load(response) == {
+                "status": "ok", "release": "strict-funnel-2026-11-18",
+            }
 
         with pytest.raises(HTTPError) as denied:
             urlopen(base + "/", timeout=2)
